@@ -1,4 +1,4 @@
-# ⚡ Lightning AI - All-in-One AI Assistant Chrome Extension (BYOK)
+# ⚡ Lightning - All-in-one AI assistant for your everyday browsing
 
 Lightning is a high-performance, commercial-grade AI Chrome Extension operating on a **BYOK (Bring Your Own Key)** model. It supports **Google Gemini**, **OpenAI**, and **Anthropic Claude** directly from your browser with zero middleman servers.
 
