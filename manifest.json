@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Lightning",
   "version": "1.0.0",
-  "description": "Lightning AI - Trợ lý AI cá nhân toàn năng (BYOK)",
+  "description": "Lightning - All-in-one AI assistant for your everyday browsing",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

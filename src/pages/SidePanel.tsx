@@ -46,7 +46,7 @@ export default function SidePanel() {
     } catch (err: any) {
       setMessages((prev) => [
         ...prev, 
-        { role: 'assistant', content: `[Lỗi: ${err.message}]` }
+        { role: 'assistant', content: `[${t.errorPrefix}: ${err.message}]` }
       ]);
     } finally {
       setIsGenerating(false);
@@ -54,7 +54,7 @@ export default function SidePanel() {
   };
 
   if (loading) {
-    return <div className="p-4 text-center text-gray-500">Đang tải...</div>;
+    return <div className="p-4 text-center text-gray-500">{t.loading}</div>;
   }
 
   if (!settings?.apiKey) {

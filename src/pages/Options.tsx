@@ -3,7 +3,7 @@ import { useSettings } from '../hooks/useSettings';
 import { type UserSettings, type CustomAction, DEFAULT_ACTIONS } from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
 
-type TabCategory = 'toolbar' | 'provider' | 'translation' | 'general';
+type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help';
 
 const PRESET_ICONS = [
   '✍️', '🌐', '📝', '💡', '✨', '🔍', '📊', '🛠️', 
@@ -22,8 +22,12 @@ const PROMPT_VARIABLES = [
 export default function Options() {
   const { settings, updateSettings, loading } = useSettings();
   
-  // Active Sidebar Category
-  const [activeTab, setActiveTab] = useState<TabCategory>('toolbar');
+  // Active Sidebar Section & Scroll Refs
+  const [activeSection, setActiveSection] = useState<SectionId>('general');
+  const activeSectionRef = useRef<SectionId>('general');
+  const mainContainerRef = useRef<HTMLElement>(null);
+  const navContainerRef = useRef<HTMLElement>(null);
+  const isManualScrollRef = useRef(false);
 
   // Toolbar scene filter tab
   const [toolbarFilter, setToolbarFilter] = useState<'all' | 'reading' | 'writing'>('reading');
@@ -36,6 +40,7 @@ export default function Options() {
   const [targetLanguage, setTargetLanguage] = useState('Vietnamese');
   const [appLanguage, setAppLanguage] = useState<LanguageCode>('vi');
   const [showToolbar, setShowToolbar] = useState(true);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [actions, setActions] = useState<CustomAction[]>([]);
   
   const [saved, setSaved] = useState(false);
@@ -69,9 +74,90 @@ export default function Options() {
       setTargetLanguage(settings.targetLanguage || 'Vietnamese');
       setAppLanguage((settings.appLanguage as LanguageCode) || 'vi');
       setShowToolbar(settings.showToolbar !== false);
+      setWebSearchEnabled(settings.webSearchEnabled !== false);
       setActions(settings.actions && settings.actions.length > 0 ? settings.actions : DEFAULT_ACTIONS);
     }
   }, [settings]);
+
+  const scrollNavToItem = (id: SectionId) => {
+    const navContainer = navContainerRef.current;
+    const navBtn = document.getElementById(`nav-item-${id}`);
+    if (navContainer && navBtn) {
+      const containerRect = navContainer.getBoundingClientRect();
+      const btnRect = navBtn.getBoundingClientRect();
+      if (btnRect.top < containerRect.top || btnRect.bottom > containerRect.bottom) {
+        navBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  };
+
+  const scrollToSection = (id: SectionId) => {
+    activeSectionRef.current = id;
+    setActiveSection(id);
+    scrollNavToItem(id);
+    const element = document.getElementById(`section-${id}`);
+    if (element) {
+      isManualScrollRef.current = true;
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => {
+        isManualScrollRef.current = false;
+      }, 800);
+    }
+  };
+
+  const handleScroll = (e?: React.UIEvent<HTMLElement>) => {
+    if (isManualScrollRef.current) return;
+    const container = (e?.currentTarget as HTMLElement) || mainContainerRef.current;
+    if (!container) return;
+
+    const sections: SectionId[] = ['general', 'toolbar', 'translation', 'provider', 'help'];
+    const containerTop = container.getBoundingClientRect().top;
+    const containerHeight = container.clientHeight;
+    const scrollHeight = container.scrollHeight;
+    const scrollTop = container.scrollTop;
+
+    // Bottom check: if scrolled near the bottom, activate the last section ('help')
+    const isNearBottom = scrollTop + containerHeight >= scrollHeight - 60;
+    if (isNearBottom) {
+      if (activeSectionRef.current !== 'help') {
+        activeSectionRef.current = 'help';
+        setActiveSection('help');
+        scrollNavToItem('help');
+      }
+      return;
+    }
+
+    // Dynamic threshold: roughly 35% of visible viewport
+    const threshold = Math.max(140, containerHeight * 0.35);
+
+    let currentSection: SectionId = 'general';
+    for (let i = sections.length - 1; i >= 0; i--) {
+      const el = document.getElementById(`section-${sections[i]}`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top - containerTop <= threshold) {
+          currentSection = sections[i];
+          break;
+        }
+      }
+    }
+
+    if (activeSectionRef.current !== currentSection) {
+      activeSectionRef.current = currentSection;
+      setActiveSection(currentSection);
+      scrollNavToItem(currentSection);
+    }
+  };
+
+  useEffect(() => {
+    if (loading) return;
+    const container = mainContainerRef.current;
+    if (!container) return;
+
+    const onNativeScroll = () => handleScroll();
+    container.addEventListener('scroll', onNativeScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onNativeScroll);
+  }, [loading]);
 
   const handleProviderChange = (newProvider: UserSettings['provider']) => {
     setProvider(newProvider);
@@ -126,8 +212,10 @@ export default function Options() {
       if (loadedModels.length > 0) {
         let defaultModel = loadedModels[0].id;
         if (provider === 'gemini') {
-          const bestModel = loadedModels.find(m => m.id === 'gemini-1.5-pro' || m.id === 'gemini-1.5-pro-latest') 
-                         || loadedModels.find(m => m.id === 'gemini-1.5-flash' || m.id === 'gemini-1.5-flash-latest');
+          const bestModel = loadedModels.find(m => m.id === 'gemini-flash-lite-latest' || m.id === 'gemini-2.0-flash-lite' || m.id === 'gemini-1.5-flash-8b') 
+                         || loadedModels.find(m => m.id === 'gemini-1.5-flash' || m.id === 'gemini-1.5-flash-latest' || m.id === 'gemini-2.0-flash')
+                         || loadedModels.find(m => m.id.includes('flash'))
+                         || loadedModels.find(m => m.id.includes('pro'));
           if (bestModel) defaultModel = bestModel.id;
         } else if (provider === 'openai') {
           const bestModel = loadedModels.find(m => m.id === 'gpt-4o' || m.id === 'gpt-4-turbo');
@@ -147,11 +235,13 @@ export default function Options() {
   const handleSaveAll = async (
     newActions?: CustomAction[], 
     newShowToolbar?: boolean,
-    newAppLang?: LanguageCode
+    newAppLang?: LanguageCode,
+    newWebSearch?: boolean
   ) => {
     const actionsToSave = newActions || actions;
     const toolbarToSave = newShowToolbar !== undefined ? newShowToolbar : showToolbar;
     const appLangToSave = newAppLang || appLanguage;
+    const webSearchToSave = newWebSearch !== undefined ? newWebSearch : webSearchEnabled;
     
     await updateSettings({ 
       apiKey: localKey, 
@@ -162,6 +252,7 @@ export default function Options() {
       appLanguage: appLangToSave,
       actions: actionsToSave,
       showToolbar: toolbarToSave,
+      webSearchEnabled: webSearchToSave,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
@@ -171,6 +262,12 @@ export default function Options() {
     const updated = !showToolbar;
     setShowToolbar(updated);
     await handleSaveAll(actions, updated);
+  };
+
+  const handleToggleWebSearch = async () => {
+    const updated = !webSearchEnabled;
+    setWebSearchEnabled(updated);
+    await handleSaveAll(actions, showToolbar, appLanguage, updated);
   };
 
   const handleAppLanguageChange = async (newLang: LanguageCode) => {
@@ -302,11 +399,25 @@ export default function Options() {
         </div>
 
         {/* Navigation Categories */}
-        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
+        <nav ref={navContainerRef} className="p-3 space-y-1 flex-1 overflow-y-auto">
           <button
-            onClick={() => setActiveTab('toolbar')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'toolbar'
+            id="nav-item-general"
+            onClick={() => scrollToSection('general')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'general'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lg">⚙️</span>
+            <span>{t.navGeneral}</span>
+          </button>
+
+          <button
+            id="nav-item-toolbar"
+            onClick={() => scrollToSection('toolbar')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'toolbar'
                 ? 'bg-blue-50 text-blue-600 font-semibold'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
@@ -316,21 +427,10 @@ export default function Options() {
           </button>
 
           <button
-            onClick={() => setActiveTab('provider')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'provider'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-            }`}
-          >
-            <span className="text-lg">🔑</span>
-            <span>{t.navProvider}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('translation')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'translation'
+            id="nav-item-translation"
+            onClick={() => scrollToSection('translation')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'translation'
                 ? 'bg-blue-50 text-blue-600 font-semibold'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
@@ -340,15 +440,29 @@ export default function Options() {
           </button>
 
           <button
-            onClick={() => setActiveTab('general')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'general'
+            id="nav-item-provider"
+            onClick={() => scrollToSection('provider')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'provider'
                 ? 'bg-blue-50 text-blue-600 font-semibold'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
-            <span className="text-lg">⚙️</span>
-            <span>{t.navGeneral}</span>
+            <span className="text-lg">🔑</span>
+            <span>{t.navProvider}</span>
+          </button>
+
+          <button
+            id="nav-item-help"
+            onClick={() => scrollToSection('help')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'help'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lg">❓</span>
+            <span>{t.navHelp}</span>
           </button>
         </nav>
 
@@ -359,8 +473,12 @@ export default function Options() {
       </aside>
 
       {/* RIGHT CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto p-8 lg:p-10">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <main
+        ref={mainContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-8 lg:p-10 scroll-smooth"
+      >
+        <div className="max-w-3xl mx-auto space-y-12 pb-36">
 
           {/* Toast Notification */}
           {saved && (
@@ -369,13 +487,45 @@ export default function Options() {
             </div>
           )}
 
-          {/* TAB 1: TEXT SELECTION TOOLBAR */}
-          {activeTab === 'toolbar' && (
-            <div className="space-y-6">
+          {/* SECTION 1: GENERAL SETTINGS */}
+          <section id="section-general" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.generalTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {t.generalSubtitle}
+              </p>
+            </div>
+
+            {/* App Interface Language Setting */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.toolbarTitle}</h2>
-                <p className="text-sm text-slate-500 mt-1">{t.toolbarDesc}</p>
+                <h3 className="text-sm font-bold text-slate-900 mb-1">{t.appLangLabel}</h3>
+                <p className="text-xs text-slate-500 mb-3">
+                  {t.appLangDesc}
+                </p>
+                <select
+                  className="w-full sm:w-80 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  value={appLanguage}
+                  onChange={(e) => handleAppLanguageChange(e.target.value as LanguageCode)}
+                >
+                  {t.uiLanguages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </select>
               </div>
+            </div>
+          </section>
+
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 2: TEXT SELECTION TOOLBAR */}
+          <section id="section-toolbar" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.toolbarTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t.toolbarDesc}</p>
+            </div>
 
               {/* Sub-tabs */}
               <div className="flex gap-2 p-1 bg-slate-200/60 rounded-xl w-fit">
@@ -427,6 +577,30 @@ export default function Options() {
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
                       showToolbar ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Web Search Toggle Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🌐</span>
+                    <h3 className="text-sm font-semibold text-slate-900">{t.enableWebSearch}</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{t.enableWebSearchDesc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleWebSearch}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    webSearchEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      webSearchEnabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -523,236 +697,211 @@ export default function Options() {
                   })}
                 </div>
               </div>
+            </section>
+
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 3: TRANSLATION SETTINGS */}
+          <section id="section-translation" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.transTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t.transDesc}</p>
             </div>
-          )}
 
-          {/* TAB 2: AI PROVIDER & KEY */}
-          {activeTab === 'provider' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.providerTitle}</h2>
-                <p className="text-sm text-slate-500 mt-1">{t.providerDesc}</p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    {t.providerLabel}
+                    {t.sourceLangLabel}
                   </label>
                   <select
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    value={provider}
-                    onChange={(e) => handleProviderChange(e.target.value as UserSettings['provider'])}
+                    value={sourceLanguage}
+                    onChange={(e) => setSourceLanguage(e.target.value)}
                   >
-                    <option value="gemini">Google Gemini (Recommended - Fast & Free tier)</option>
-                    <option value="openai">OpenAI (ChatGPT GPT-4o, GPT-4o-mini)</option>
-                    <option value="claude">Anthropic Claude (Claude 3.5 Sonnet)</option>
+                    {t.sourceLanguages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    {t.apiKeyLabel}
+                    {t.targetLangLabel}
                   </label>
-                  <input
-                    type="password"
-                    required
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    placeholder={`Dán API Key ${provider} tại đây...`}
-                    value={localKey}
-                    onChange={(e) => setLocalKey(e.target.value)}
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1.5">{t.apiKeyNote}</p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      {t.modelLabel}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleLoadModels}
-                      disabled={loadingModels || !localKey.trim()}
-                      className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold px-2.5 py-1 bg-blue-50 rounded-lg transition"
-                    >
-                      {loadingModels ? t.loadingModels : t.loadModelsBtn}
-                    </button>
-                  </div>
-
-                  {models.length > 0 ? (
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                      value={modelId}
-                      onChange={(e) => setModelId(e.target.value)}
-                    >
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.id})
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                      placeholder="Nhập tên model hoặc tải danh sách..."
-                      value={modelId}
-                      onChange={(e) => setModelId(e.target.value)}
-                    />
-                  )}
-                  {modelError && (
-                    <p className="text-xs text-rose-600 font-medium mt-1.5">{modelError}</p>
-                  )}
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleSaveAll()}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
-                  >
-                    {t.saveProviderBtn}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: TRANSLATION SETTINGS */}
-          {activeTab === 'translation' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.transTitle}</h2>
-                <p className="text-sm text-slate-500 mt-1">{t.transDesc}</p>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      {t.sourceLangLabel}
-                    </label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                      value={sourceLanguage}
-                      onChange={(e) => setSourceLanguage(e.target.value)}
-                    >
-                      <option value="auto">Tự động nhận diện (Auto)</option>
-                      <option value="English">Tiếng Anh (English)</option>
-                      <option value="Japanese">Tiếng Nhật (Japanese)</option>
-                      <option value="Chinese">Tiếng Trung (Chinese)</option>
-                      <option value="Korean">Tiếng Hàn (Korean)</option>
-                      <option value="Vietnamese">Tiếng Việt</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                      {t.targetLangLabel}
-                    </label>
-                    <select
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                      value={targetLanguage}
-                      onChange={(e) => setTargetLanguage(e.target.value)}
-                    >
-                      <option value="tiếng Việt">Tiếng Việt</option>
-                      <option value="English">English</option>
-                      <option value="Japanese">Japanese (日本語)</option>
-                      <option value="Chinese">Chinese (中文)</option>
-                      <option value="Korean">Korean (한국어)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleSaveAll()}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
-                  >
-                    {t.saveTransBtn}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: GENERAL SETTINGS (Moved App Language here) */}
-          {activeTab === 'general' && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.generalTitle}</h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {t.generalSubtitle}
-                </p>
-              </div>
-
-              {/* App Interface Language Setting */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 mb-1">{t.appLangLabel}</h3>
-                  <p className="text-xs text-slate-500 mb-3">
-                    {t.appLangDesc}
-                  </p>
                   <select
-                    className="w-full sm:w-80 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    value={appLanguage}
-                    onChange={(e) => handleAppLanguageChange(e.target.value as LanguageCode)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    value={targetLanguage === 'tiếng Việt' ? 'Vietnamese' : targetLanguage}
+                    onChange={(e) => setTargetLanguage(e.target.value)}
                   >
-                    <option value="vi">Tiếng Việt (Vietnamese)</option>
-                    <option value="en">English (Tiếng Anh)</option>
-                    <option value="ja">日本語 (Japanese / Tiếng Nhật)</option>
+                    {t.targetLanguages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {/* Shortcuts & Guide */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
-                  {t.guideTitle}
-                </h3>
+              <div className="pt-2">
+                <button
+                  onClick={() => handleSaveAll()}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+                >
+                  {t.saveTransBtn}
+                </button>
+              </div>
+            </div>
+          </section>
 
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                  <span className="text-2xl">🖱️</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{t.guideSelectionTitle}</h4>
-                    <p className="text-xs text-slate-500">
-                      {t.guideSelectionDesc}
-                    </p>
-                  </div>
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 4: AI PROVIDER & KEY */}
+          <section id="section-provider" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.providerTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t.providerDesc}</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  {t.providerLabel}
+                </label>
+                <select
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  value={provider}
+                  onChange={(e) => handleProviderChange(e.target.value as UserSettings['provider'])}
+                >
+                  <option value="gemini">{t.providerGemini}</option>
+                  <option value="openai">{t.providerOpenAI}</option>
+                  <option value="claude">{t.providerClaude}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  {t.apiKeyLabel}
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  placeholder={`Dán API Key ${provider} tại đây...`}
+                  value={localKey}
+                  onChange={(e) => setLocalKey(e.target.value)}
+                />
+                <p className="text-[11px] text-slate-400 mt-1.5">{t.apiKeyNote}</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    {t.modelLabel}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleLoadModels}
+                    disabled={loadingModels || !localKey.trim()}
+                    className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold px-2.5 py-1 bg-blue-50 rounded-lg transition cursor-pointer"
+                  >
+                    {loadingModels ? t.loadingModels : t.loadModelsBtn}
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                  <span className="text-2xl">🖱️</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{t.guideContextTitle}</h4>
-                    <p className="text-xs text-slate-500">
-                      {t.guideContextDesc}
-                    </p>
-                  </div>
-                </div>
+                {models.length > 0 ? (
+                  <select
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                  >
+                    {models.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} ({m.id})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    placeholder="Nhập tên model hoặc tải danh sách..."
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                  />
+                )}
+                {modelError && (
+                  <p className="text-xs text-rose-600 font-medium mt-1.5">{modelError}</p>
+                )}
+              </div>
 
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                  <span className="text-2xl">💬</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{t.guideSidebarTitle}</h4>
-                    <p className="text-xs text-slate-500">
-                      {t.guideSidebarDesc}
-                    </p>
-                  </div>
-                </div>
+              <div className="pt-2">
+                <button
+                  onClick={() => handleSaveAll()}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+                >
+                  {t.saveProviderBtn}
+                </button>
+              </div>
+            </div>
+          </section>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🛡️</span>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{t.guidePrivacyTitle}</h4>
-                    <p className="text-xs text-slate-500">
-                      {t.guidePrivacyDesc}
-                    </p>
-                  </div>
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 5: HELP & SHORTCUTS */}
+          <section id="section-help" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.helpTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {t.helpDesc}
+              </p>
+            </div>
+
+            {/* Shortcuts & Guide */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <span className="text-2xl">🖱️</span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{t.guideSelectionTitle}</h4>
+                  <p className="text-xs text-slate-500">
+                    {t.guideSelectionDesc}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <span className="text-2xl">🖱️</span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{t.guideContextTitle}</h4>
+                  <p className="text-xs text-slate-500">
+                    {t.guideContextDesc}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                <span className="text-2xl">💬</span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{t.guideSidebarTitle}</h4>
+                  <p className="text-xs text-slate-500">
+                    {t.guideSidebarDesc}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🛡️</span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{t.guidePrivacyTitle}</h4>
+                  <p className="text-xs text-slate-500">
+                    {t.guidePrivacyDesc}
+                  </p>
                 </div>
               </div>
             </div>
-          )}
+          </section>
 
         </div>
       </main>

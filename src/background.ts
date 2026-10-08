@@ -98,16 +98,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, _sendResponse: (response?: any) => void) => {
   if (message.action === 'ASK_AI') {
-    handleAIRequest(message.messages, sender.tab?.id);
+    handleAIRequest(message.messages, sender.tab?.id, { webSearch: message.webSearch });
     return true;
   }
 });
 
-async function handleAIRequest(messages: ChatMessage[], tabId?: number) {
+async function handleAIRequest(messages: ChatMessage[], tabId?: number, options?: { webSearch?: boolean }) {
   if (!tabId) return;
   try {
     const settings = await storage.getSettings();
-    const stream = streamAIResponse(messages, settings);
+    const stream = streamAIResponse(messages, settings, options);
     for await (const chunk of stream) {
       chrome.tabs.sendMessage(tabId, { action: 'AI_CHUNK', chunk }, () => {
         if (chrome.runtime.lastError) { /* ignore */ }

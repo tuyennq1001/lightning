@@ -52,17 +52,6 @@ function getLocalizedActionLabel(action: CustomAction, lang: LanguageCode) {
   return action.label;
 }
 
-const TARGET_LANGUAGES = [
-  { code: 'Vietnamese', label: 'Tiếng Việt' },
-  { code: 'English', label: 'English' },
-  { code: 'Japanese', label: '日本語' },
-  { code: 'Chinese', label: '中文' },
-  { code: 'Korean', label: '한국어' },
-  { code: 'French', label: 'Français' },
-  { code: 'German', label: 'Deutsch' },
-  { code: 'Spanish', label: 'Español' },
-];
-
 function FloatingToolbar() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -73,6 +62,7 @@ function FloatingToolbar() {
   const [activeAction, setActiveAction] = useState<CustomAction | null>(null);
   const [isQuickAskMode, setIsQuickAskMode] = useState(false);
   const [quickAskQuestion, setQuickAskQuestion] = useState('');
+  const [webSearchActive, setWebSearchActive] = useState(true);
   
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
@@ -87,9 +77,25 @@ function FloatingToolbar() {
   const currentLang = (settings?.appLanguage as LanguageCode) || 'vi';
   const t = getT(currentLang);
 
+  const getTargetLangLabel = (code?: string) => {
+    const c = code === 'tiếng Việt' ? 'Vietnamese' : (code || 'Vietnamese');
+    const found = t.targetLanguages.find((l) => l.code === c);
+    return found ? found.label : c;
+  };
+
   useEffect(() => {
-    storage.getSettings().then(setSettings);
-    const unsubscribe = storage.onSettingsChanged(setSettings);
+    storage.getSettings().then((s) => {
+      setSettings(s);
+      if (s?.webSearchEnabled !== undefined) {
+        setWebSearchActive(s.webSearchEnabled);
+      }
+    });
+    const unsubscribe = storage.onSettingsChanged((s) => {
+      setSettings(s);
+      if (s?.webSearchEnabled !== undefined) {
+        setWebSearchActive(s.webSearchEnabled);
+      }
+    });
     return () => unsubscribe();
   }, []);
 
@@ -178,7 +184,9 @@ function FloatingToolbar() {
       } else if (message.action === 'AI_DONE') {
         setIsGenerating(false);
       } else if (message.action === 'AI_ERROR') {
-        setAiResponse((prev) => prev + `\n\n[Lỗi: ${message.error}]`);
+        const curLang = (settingsRef.current?.appLanguage as LanguageCode) || 'vi';
+        const curT = getT(curLang);
+        setAiResponse((prev) => prev + `\n\n[${curT.errorPrefix}: ${message.error}]`);
         setIsGenerating(false);
       } else if (message.action === 'CONTEXT_MENU_CLICK') {
         handleContextMenuAction(message.menuId, message.selectionText);
@@ -232,7 +240,7 @@ function FloatingToolbar() {
         setShowModal(true);
         startAI(action, truncated);
       } catch (e: any) {
-        setAiResponse(`[Lỗi đọc trang: ${e.message}]`);
+        setAiResponse(`[${t.errReadPage}: ${e.message}]`);
         setShowModal(true);
       }
     } else {
@@ -281,11 +289,12 @@ function FloatingToolbar() {
     setIsGenerating(true);
     setQuickAskQuestion('');
 
-    const finalPrompt = t.quickAskPrompt(selectedText, q);
+    const finalPrompt = t.quickAskPrompt(selectedText, q, webSearchActive);
 
     chrome.runtime.sendMessage({
       action: 'ASK_AI',
-      messages: [{ role: 'user', content: finalPrompt }]
+      messages: [{ role: 'user', content: finalPrompt }],
+      webSearch: webSearchActive,
     });
   };
 
@@ -300,8 +309,14 @@ function FloatingToolbar() {
     }
 
     // Replace supported prompt variables
-    const targetLang = overrideTargetLang || curSettings?.targetLanguage || 'tiếng Việt';
-    const sourceLang = curSettings?.sourceLanguage || 'Tự động';
+    const rawTarget = overrideTargetLang || curSettings?.targetLanguage || 'Vietnamese';
+    const normalizedTarget = rawTarget === 'tiếng Việt' ? 'Vietnamese' : rawTarget;
+    const targetOption = t.targetLanguages.find((l) => l.code === normalizedTarget);
+    const targetLang = targetOption ? targetOption.label : normalizedTarget;
+
+    const rawSource = curSettings?.sourceLanguage || 'auto';
+    const sourceOption = t.sourceLanguages.find((l) => l.code === rawSource);
+    const sourceLang = sourceOption ? sourceOption.label : rawSource;
     const pageTitle = document.title || '';
     const pageUrl = window.location.href || '';
 
@@ -413,9 +428,9 @@ function FloatingToolbar() {
                 </button>
 
                 {/* Text Bubble (Tooltip) on Hover */}
-                <div className="absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
-                  {action.id === 'translate' ? `${t.translateTo} ${settings?.targetLanguage || 'tiếng Việt'}` : localizedLabel}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+                <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
+                  {action.id === 'translate' ? `${t.translateTo} ${getTargetLangLabel(settings?.targetLanguage)}` : localizedLabel}
+                  <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
                 </div>
               </div>
             );
@@ -463,7 +478,7 @@ function FloatingToolbar() {
                           <span className="text-slate-300 group-hover:text-slate-400 text-xs">⠿</span>
                           <span className="text-base shrink-0">{action.icon}</span>
                           <span className="truncate max-w-[140px]">
-                            {action.id === 'translate' ? `${t.translateTo} ${settings?.targetLanguage || 'tiếng Việt'}` : localizedLabel}
+                            {action.id === 'translate' ? `${t.translateTo} ${getTargetLangLabel(settings?.targetLanguage)}` : localizedLabel}
                           </span>
                         </div>
 
@@ -500,9 +515,9 @@ function FloatingToolbar() {
             </button>
 
             {/* Tooltip */}
-            <div className="absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
+            <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
               {t.quickAsk}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+              <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
             </div>
           </div>
 
@@ -549,11 +564,11 @@ function FloatingToolbar() {
                   <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-slate-300 shadow-2xs">
                     <span className="text-xs text-slate-500 font-medium">{t.translateTo}</span>
                     <select
-                      value={settings?.targetLanguage || 'Vietnamese'}
+                      value={settings?.targetLanguage === 'tiếng Việt' ? 'Vietnamese' : (settings?.targetLanguage || 'Vietnamese')}
                       onChange={(e) => handleTargetLanguageChange(e.target.value)}
                       className="bg-transparent text-xs font-bold text-blue-600 focus:outline-none cursor-pointer pr-1"
                     >
-                      {TARGET_LANGUAGES.map(lang => (
+                      {t.targetLanguages.map((lang) => (
                         <option key={lang.code} value={lang.code}>{lang.label}</option>
                       ))}
                     </select>
@@ -595,6 +610,22 @@ function FloatingToolbar() {
                     className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-sans shadow-xs"
                     autoFocus
                   />
+                  {/* Web Search Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => setWebSearchActive(!webSearchActive)}
+                    className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border shrink-0 ${
+                      webSearchActive
+                        ? 'bg-blue-50 border-blue-300 text-blue-700 shadow-2xs hover:bg-blue-100'
+                        : 'bg-white border-slate-300 text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                    }`}
+                    title={t.webSearchTooltip}
+                  >
+                    <span className="text-sm leading-none">🌐</span>
+                    <span className="text-[11px]">{t.webSearch}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ml-0.5 ${webSearchActive ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
+                  </button>
+
                   <button
                     type="submit"
                     disabled={!quickAskQuestion.trim() || isGenerating}

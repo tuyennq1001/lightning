@@ -17,6 +17,7 @@ export interface UserSettings {
   appLanguage: 'vi' | 'en' | 'ja';
   actions: CustomAction[];
   showToolbar: boolean;
+  webSearchEnabled?: boolean;
 }
 
 export const DEFAULT_ACTIONS: CustomAction[] = [
@@ -66,6 +67,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   appLanguage: 'vi',
   actions: DEFAULT_ACTIONS,
   showToolbar: true,
+  webSearchEnabled: true,
 };
 
 import { getDefaultPrompt, type LanguageCode } from './i18n';

@@ -1,4 +1,5 @@
 import type { UserSettings } from './storage';
+import { getT, type LanguageCode } from './i18n';
 
 export type AIProvider = UserSettings['provider'];
 
@@ -7,31 +8,56 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface StreamOptions {
+  webSearch?: boolean;
+}
+
 export async function* streamAIResponse(
   messages: ChatMessage[],
-  settings: UserSettings
+  settings: UserSettings,
+  options?: StreamOptions
 ): AsyncGenerator<string, void, unknown> {
+  const lang = (settings.appLanguage as LanguageCode) || 'vi';
+  const t = getT(lang);
+
   if (!settings.apiKey) {
-    yield 'Lỗi: Vui lòng nhập API Key trong phần Cài đặt.';
+    yield t.errNoApiKey;
     return;
   }
 
   try {
     if (settings.provider === 'openai') {
-      yield* streamOpenAI(messages, settings);
+      yield* streamOpenAI(messages, settings, options);
     } else if (settings.provider === 'gemini') {
-      yield* streamGemini(messages, settings);
+      yield* streamGemini(messages, settings, options);
     } else if (settings.provider === 'claude') {
-      yield* streamClaude(messages, settings);
+      yield* streamClaude(messages, settings, options);
     } else {
-      yield 'Lỗi: Nhà cung cấp chưa được hỗ trợ.';
+      yield t.errUnsupportedProvider;
     }
   } catch (error: any) {
-    yield `\n\n[Lỗi kết nối: ${error?.message || 'Không xác định'}]`;
+    yield `\n\n[${t.errConnection}: ${error?.message || 'Unknown'}]`;
   }
 }
 
-async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings) {
+async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
+  let finalMessages = messages;
+  if (options?.webSearch) {
+    const lang = (settings.appLanguage as LanguageCode) || 'vi';
+    const systemPrompt = lang === 'ja'
+      ? 'ウェブ検索モードが有効です。最新かつ正確な情報を提供し、可能であれば出典を引用してください。'
+      : lang === 'en'
+      ? 'Web search mode is enabled. Provide the most up-to-date and accurate information, citing sources where available.'
+      : 'Chế độ tìm kiếm Internet đang bật. Hãy cung cấp câu trả lời mới nhất, chính xác nhất và trích dẫn thông tin nếu có.';
+    finalMessages = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...messages
+    ];
+  }
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -40,7 +66,7 @@ async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings) {
     },
     body: JSON.stringify({
       model: settings.modelId || 'gpt-4o-mini',
-      messages,
+      messages: finalMessages,
       stream: true,
     }),
   });
@@ -58,7 +84,7 @@ async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings) {
   });
 }
 
-async function* streamGemini(messages: ChatMessage[], settings: UserSettings) {
+async function* streamGemini(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
   // Convert generic messages to Gemini format
   const geminiMessages = messages
     .filter((m) => m.role !== 'system') // Gemini handles system instructions differently, simple map here
@@ -75,6 +101,11 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings) {
     body.systemInstruction = {
       parts: [{ text: systemMessage.content }],
     };
+  }
+
+  const shouldSearch = options?.webSearch ?? settings.webSearchEnabled ?? false;
+  if (shouldSearch) {
+    body.tools = [{ google_search: {} }];
   }
 
   const modelId = settings.modelId || 'gemini-1.5-flash';
@@ -94,10 +125,23 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings) {
     throw new Error(err.error?.message || `HTTP ${response.status}`);
   }
 
+  const sourcesMap = new Map<string, string>();
+
   yield* parseSSEStream(response, (data) => {
     if (data.error) {
       throw new Error(data.error.message || 'Lỗi API Gemini');
     }
+
+    // Extract grounding citations if returned
+    const groundingChunks = data.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (Array.isArray(groundingChunks)) {
+      for (const chunk of groundingChunks) {
+        if (chunk?.web?.uri) {
+          sourcesMap.set(chunk.web.uri, chunk.web.title || chunk.web.uri);
+        }
+      }
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!text && data.candidates?.[0]?.finishReason) {
       if (data.candidates[0].finishReason !== 'STOP') {
@@ -107,10 +151,27 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings) {
     }
     return text;
   });
+
+  if (sourcesMap.size > 0) {
+    const label = settings.appLanguage === 'ja'
+      ? '参考情報'
+      : settings.appLanguage === 'en'
+      ? 'Sources'
+      : 'Nguồn tham khảo';
+    let sourcesText = `\n\n---\n**📚 ${label}:**\n`;
+    for (const [uri, title] of sourcesMap.entries()) {
+      sourcesText += `- [${title}](${uri})\n`;
+    }
+    yield sourcesText;
+  }
 }
 
-async function* streamClaude(messages: ChatMessage[], settings: UserSettings) {
-  const systemMessage = messages.find((m) => m.role === 'system')?.content;
+async function* streamClaude(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
+  let systemMessage = messages.find((m) => m.role === 'system')?.content;
+  if (options?.webSearch) {
+    const searchNote = 'Chế độ tìm kiếm Internet đang bật. Hãy cung cấp câu trả lời mới nhất và chính xác nhất.';
+    systemMessage = systemMessage ? `${systemMessage}\n\n${searchNote}` : searchNote;
+  }
   const claudeMessages = messages.filter((m) => m.role !== 'system');
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
