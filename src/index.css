@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+*, ::before, ::after {
+  --tw-border-style: solid;
+}
+
+/* Explicit popup border classes to guarantee crisp dark border rendering in Shadow DOM */
+.lightning-toolbar {
+  border: 2px solid #0f172a !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.lightning-dropdown {
+  border: 2px solid #0f172a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.lightning-modal {
+  border: 2px solid #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3) !important;
+}
+
 /* Markdown Styles for Lightning */
 .lightning-markdown {
   font-size: 0.875rem;

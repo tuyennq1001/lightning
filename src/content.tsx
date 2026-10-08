@@ -390,11 +390,13 @@ function FloatingToolbar() {
     <>
       {position && !showModal && (
         <div
-          className="absolute z-[2147483647] flex items-center bg-white shadow-2xl border-2 border-slate-900 rounded-full px-2.5 py-1 gap-1 animate-fade-in-up select-none ring-1 ring-black/20"
+          className="lightning-toolbar absolute z-[2147483647] flex items-center bg-white rounded-full px-2.5 py-1 gap-1 animate-fade-in-up select-none"
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
             transform: 'translateX(-50%)',
+            border: '2px solid #0f172a',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
           }}
         >
           {/* Pinned Action Buttons on Main Bar */}
@@ -436,7 +438,13 @@ function FloatingToolbar() {
 
             {/* Monica-style Action List Dropdown Menu with Pin Buttons */}
             {showMoreMenu && (
-              <div className="absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border-2 border-slate-900 py-2 min-w-[240px] z-50 animate-fade-in-up divide-y divide-slate-100 ring-1 ring-black/20">
+              <div 
+                className="lightning-dropdown absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white rounded-2xl py-2 min-w-[240px] z-50 animate-fade-in-up divide-y divide-slate-100"
+                style={{
+                  border: '2px solid #0f172a',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
+                }}
+              >
                 <div className="px-3.5 py-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                   <span>{t.actionListTitle}</span>
                   <span className="text-[10px] text-purple-600 font-semibold">{t.pinHeader}</span>
@@ -524,7 +532,13 @@ function FloatingToolbar() {
             maxWidth: 'calc(100vw - 32px)',
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full border-2 border-slate-900 overflow-hidden flex flex-col max-h-[75vh] ring-1 ring-black/20">
+          <div 
+            className="lightning-modal bg-white rounded-2xl w-full overflow-hidden flex flex-col max-h-[75vh]"
+            style={{
+              border: '2px solid #0f172a',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+            }}
+          >
             {/* Header */}
             <div className="px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90">
               <div className="flex items-center gap-2">
