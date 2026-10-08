@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Lightning",
+  "version": "1.0.0",
+  "description": "Lightning AI - Trợ lý AI cá nhân toàn năng (BYOK)",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "sidePanel",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.tsx"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "favicon.svg"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/* Markdown Styles for Lightning */
+.lightning-markdown {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #1e293b;
+  word-break: break-word;
+}
+
+.lightning-markdown h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.lightning-markdown h2 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-top: 0.875rem;
+  margin-bottom: 0.375rem;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.lightning-markdown h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #0f172a;
+  line-height: 1.4;
+}
+
+.lightning-markdown h4, 
+.lightning-markdown h5, 
+.lightning-markdown h6 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 0.625rem;
+  margin-bottom: 0.25rem;
+  color: #334155;
+}
+
+.lightning-markdown p {
+  margin-bottom: 0.625rem;
+}
+
+.lightning-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.lightning-markdown strong {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.lightning-markdown em {
+  font-style: italic;
+}
+
+.lightning-markdown del {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.lightning-markdown ul {
+  list-style-type: disc;
+  margin-left: 1.25rem;
+  margin-bottom: 0.625rem;
+  padding-left: 0.25rem;
+}
+
+.lightning-markdown ol {
+  list-style-type: decimal;
+  margin-left: 1.25rem;
+  margin-bottom: 0.625rem;
+  padding-left: 0.25rem;
+}
+
+.lightning-markdown li {
+  margin-bottom: 0.25rem;
+  line-height: 1.55;
+}
+
+.lightning-markdown li > p {
+  margin-bottom: 0.25rem;
+}
+
+.lightning-markdown blockquote {
+  border-left: 3px solid #3b82f6;
+  padding-left: 0.875rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  margin-top: 0.625rem;
+  margin-bottom: 0.625rem;
+  color: #475569;
+  background-color: #f8fafc;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.lightning-markdown code:not(pre code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  background-color: #f1f5f9;
+  color: #6366f1;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e2e8f0;
+  word-break: break-all;
+}
+
+.lightning-markdown .code-block-wrapper {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #1e293b;
+  background-color: #090d16;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.lightning-markdown .code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.75rem;
+  background-color: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+}
+
+.lightning-markdown .code-lang {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.lightning-markdown .copy-code-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  color: #94a3b8;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.lightning-markdown .copy-code-btn:hover {
+  color: #ffffff;
+  background-color: #1e293b;
+}
+
+.lightning-markdown pre {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 1.5;
+  color: #e2e8f0;
+  background-color: transparent;
+}
+
+.lightning-markdown pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+}
+
+.lightning-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.lightning-markdown th {
+  background-color: #f1f5f9;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+.lightning-markdown td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+.lightning-markdown tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+.lightning-markdown a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.lightning-markdown a:hover {
+  color: #1d4ed8;
+}
+
+.lightning-markdown hr {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 0;
+  border-top: 1px solid #e2e8f0;
+}
