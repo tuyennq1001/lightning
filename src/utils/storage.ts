@@ -14,6 +14,7 @@ export interface UserSettings {
   modelId?: string;
   sourceLanguage: string;
   targetLanguage: string;
+  outputLanguage?: string;
   appLanguage: 'vi' | 'en' | 'ja';
   actions: CustomAction[];
   showToolbar: boolean;
@@ -44,7 +45,7 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     id: 'summarize', 
     label: 'Tóm tắt', 
     icon: '📝', 
-    prompt: 'Tóm tắt ngắn gọn các ý chính của đoạn văn bản sau bằng tiếng Việt. Chỉ xuất ra nội dung tóm tắt, không thêm câu giao tiếp hay lời dẫn:\n\n{text}', 
+    prompt: 'Tóm tắt ngắn gọn các ý chính của đoạn văn bản sau bằng {OUTPUT_LANG}. Chỉ xuất ra nội dung tóm tắt, không thêm câu giao tiếp hay lời dẫn:\n\n{text}', 
     scene: 'reading', 
     isDefault: true,
     isPinned: true
@@ -53,7 +54,7 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     id: 'explain', 
     label: 'Giải thích', 
     icon: '💡', 
-    prompt: 'Giải thích chi tiết ý nghĩa và ngữ cảnh của đoạn văn bản sau bằng tiếng Việt. Chỉ xuất ra nội dung giải thích, không thêm lời dẫn:\n\n{text}', 
+    prompt: 'Giải thích chi tiết ý nghĩa và ngữ cảnh của đoạn văn bản sau bằng {OUTPUT_LANG}. Chỉ xuất ra nội dung giải thích, không thêm lời dẫn:\n\n{text}', 
     scene: 'reading', 
     isDefault: true,
     isPinned: false
@@ -65,6 +66,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   provider: 'gemini',
   sourceLanguage: 'auto',
   targetLanguage: 'Vietnamese',
+  outputLanguage: 'Vietnamese',
   appLanguage: 'vi',
   actions: DEFAULT_ACTIONS,
   showToolbar: true,
@@ -73,6 +75,12 @@ export const DEFAULT_SETTINGS: UserSettings = {
 };
 
 import { getDefaultPrompt, type LanguageCode } from './i18n.ts';
+
+export function getDefaultOutputLanguage(appLang: LanguageCode = 'vi'): string {
+  if (appLang === 'ja') return 'Japanese';
+  if (appLang === 'en') return 'English';
+  return 'Vietnamese';
+}
 
 /**
  * Normalizes a URL or domain string to a clean domain/hostname.
@@ -164,9 +172,11 @@ export const storage = {
       const data = await chrome.storage.local.get('settings');
       const saved: Partial<UserSettings> = data?.settings || {};
       const lang = (saved.appLanguage as LanguageCode) || 'vi';
+      const outputLanguage = saved.outputLanguage || getDefaultOutputLanguage(lang);
       return {
         ...DEFAULT_SETTINGS,
         ...saved,
+        outputLanguage,
         actions: sanitizeActions(saved.actions, lang),
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
       };
@@ -178,9 +188,13 @@ export const storage = {
   async saveSettings(settings: Partial<UserSettings>): Promise<void> {
     const currentSettings = await this.getSettings();
     const newLang = (settings.appLanguage as LanguageCode) || currentSettings.appLanguage || 'vi';
+    const newOutputLang = settings.outputLanguage !== undefined
+      ? settings.outputLanguage
+      : (currentSettings.outputLanguage || getDefaultOutputLanguage(newLang));
     const newSettings = { 
       ...currentSettings, 
       ...settings,
+      outputLanguage: newOutputLang,
       actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang),
       disabledWebsites: settings.disabledWebsites !== undefined
         ? sanitizeDisabledWebsites(settings.disabledWebsites)
@@ -194,9 +208,11 @@ export const storage = {
       if (areaName === 'local' && changes.settings) {
         const val: Partial<UserSettings> = changes.settings.newValue || {};
         const lang = (val.appLanguage as LanguageCode) || 'vi';
+        const outputLanguage = val.outputLanguage || getDefaultOutputLanguage(lang);
         callback({
           ...DEFAULT_SETTINGS,
           ...val,
+          outputLanguage,
           actions: sanitizeActions(val.actions, lang),
           disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
         });

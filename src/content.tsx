@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Readability } from '@mozilla/readability';
 import tailwindStyles from './index.css?inline';
 import { storage, type UserSettings, type CustomAction, DEFAULT_ACTIONS, isDomainDisabled, normalizeDomain } from './utils/storage';
-import { getT, getDefaultPrompt, type LanguageCode } from './utils/i18n';
+import { getT, getDefaultPrompt, stripFlagEmoji, type LanguageCode } from './utils/i18n';
 import MarkdownRenderer from './components/MarkdownRenderer';
 
 function ActionIcon({ action }: { action: CustomAction }) {
@@ -298,7 +298,14 @@ function FloatingToolbar() {
     setIsGenerating(true);
     setQuickAskQuestion('');
 
-    const finalPrompt = t.quickAskPrompt(selectedText, q, webSearchActive);
+    const curSettings = settingsRef.current;
+    const rawOutput = curSettings?.outputLanguage || (currentLang === 'ja' ? 'Japanese' : currentLang === 'en' ? 'English' : 'Vietnamese');
+    const normalizedOutput = rawOutput === 'tiếng Việt' ? 'Vietnamese' : rawOutput;
+    const outputOption = t.outputLanguages?.find((l) => l.code === normalizedOutput) || t.targetLanguages.find((l) => l.code === normalizedOutput);
+    const outputLang = outputOption ? outputOption.label : normalizedOutput;
+
+    const outputClean = stripFlagEmoji(outputLang);
+    const finalPrompt = t.quickAskPrompt(selectedText, q, webSearchActive, outputClean);
 
     chrome.runtime.sendMessage({
       action: 'ASK_AI',
@@ -323,14 +330,20 @@ function FloatingToolbar() {
     const targetOption = t.targetLanguages.find((l) => l.code === normalizedTarget);
     const targetLang = targetOption ? targetOption.label : normalizedTarget;
 
+    const rawOutput = curSettings?.outputLanguage || (currentLang === 'ja' ? 'Japanese' : currentLang === 'en' ? 'English' : 'Vietnamese');
+    const normalizedOutput = rawOutput === 'tiếng Việt' ? 'Vietnamese' : rawOutput;
+    const outputOption = t.outputLanguages?.find((l) => l.code === normalizedOutput) || t.targetLanguages.find((l) => l.code === normalizedOutput);
+    const outputLang = outputOption ? outputOption.label : normalizedOutput;
+
     const rawSource = curSettings?.sourceLanguage || 'auto';
     const sourceOption = t.sourceLanguages.find((l) => l.code === rawSource);
     const sourceLang = sourceOption ? sourceOption.label : rawSource;
     const pageTitle = document.title || '';
     const pageUrl = window.location.href || '';
 
-    prompt = prompt.replace(/{TARGET_LANG}/g, targetLang);
-    prompt = prompt.replace(/{SOURCE_LANG}/g, sourceLang);
+    prompt = prompt.replace(/{TARGET_LANG}/g, stripFlagEmoji(targetLang));
+    prompt = prompt.replace(/{OUTPUT_LANG}/g, stripFlagEmoji(outputLang));
+    prompt = prompt.replace(/{SOURCE_LANG}/g, stripFlagEmoji(sourceLang));
     prompt = prompt.replace(/{page_title}/g, pageTitle);
     prompt = prompt.replace(/{page_url}/g, pageUrl);
 

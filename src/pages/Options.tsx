@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { type UserSettings, type CustomAction, DEFAULT_ACTIONS, normalizeDomain } from '../utils/storage';
+import { type UserSettings, type CustomAction, DEFAULT_ACTIONS, normalizeDomain, getDefaultOutputLanguage } from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
 
 type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help' | 'about';
@@ -11,12 +11,13 @@ const PRESET_ICONS = [
   '🏷️', '📋', '✏️', '🧠', '💼', '🔥', '📚', '🧩'
 ];
 
-const PROMPT_VARIABLES = [
-  { label: '{text}', desc: 'Văn bản được bôi đen' },
-  { label: '{TARGET_LANG}', desc: 'Ngôn ngữ dịch ra' },
-  { label: '{SOURCE_LANG}', desc: 'Ngôn ngữ gốc' },
-  { label: '{page_title}', desc: 'Tiêu đề trang web' },
-  { label: '{page_url}', desc: 'URL trang web' },
+const getPromptVariables = (t: ReturnType<typeof getT>) => [
+  { label: '{text}', desc: t.varTextDesc },
+  { label: '{OUTPUT_LANG}', desc: t.varOutputLangDesc },
+  { label: '{TARGET_LANG}', desc: t.varTargetLangDesc },
+  { label: '{SOURCE_LANG}', desc: t.varSourceLangDesc },
+  { label: '{page_title}', desc: t.varPageTitleDesc },
+  { label: '{page_url}', desc: t.varPageUrlDesc },
 ];
 
 export default function Options() {
@@ -38,6 +39,7 @@ export default function Options() {
   const [modelId, setModelId] = useState('');
   const [sourceLanguage, setSourceLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('Vietnamese');
+  const [outputLanguage, setOutputLanguage] = useState('Vietnamese');
   const [appLanguage, setAppLanguage] = useState<LanguageCode>('vi');
   const [showToolbar, setShowToolbar] = useState(true);
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
@@ -76,6 +78,7 @@ export default function Options() {
       setModelId(settings.modelId || '');
       setSourceLanguage(settings.sourceLanguage || 'auto');
       setTargetLanguage(settings.targetLanguage || 'Vietnamese');
+      setOutputLanguage(settings.outputLanguage || getDefaultOutputLanguage((settings.appLanguage as LanguageCode) || 'vi'));
       setAppLanguage((settings.appLanguage as LanguageCode) || 'vi');
       setShowToolbar(settings.showToolbar !== false);
       setWebSearchEnabled(settings.webSearchEnabled !== false);
@@ -242,13 +245,15 @@ export default function Options() {
     newShowToolbar?: boolean,
     newAppLang?: LanguageCode,
     newWebSearch?: boolean,
-    newDisabledWebsites?: string[]
+    newDisabledWebsites?: string[],
+    newOutputLang?: string
   ) => {
     const actionsToSave = newActions || actions;
     const toolbarToSave = newShowToolbar !== undefined ? newShowToolbar : showToolbar;
     const appLangToSave = newAppLang || appLanguage;
     const webSearchToSave = newWebSearch !== undefined ? newWebSearch : webSearchEnabled;
     const disabledWebsitesToSave = newDisabledWebsites !== undefined ? newDisabledWebsites : disabledWebsites;
+    const outputLangToSave = newOutputLang !== undefined ? newOutputLang : outputLanguage;
     
     await updateSettings({ 
       apiKey: localKey, 
@@ -256,6 +261,7 @@ export default function Options() {
       modelId, 
       sourceLanguage, 
       targetLanguage,
+      outputLanguage: outputLangToSave,
       appLanguage: appLangToSave,
       actions: actionsToSave,
       showToolbar: toolbarToSave,
@@ -407,6 +413,10 @@ export default function Options() {
     if (toolbarFilter === 'all') return true;
     return a.scene === 'all' || a.scene === toolbarFilter;
   });
+
+  const readingActionsCount = actions.filter(a => a.scene === 'all' || a.scene === 'reading').length;
+  const writingActionsCount = actions.filter(a => a.scene === 'all' || a.scene === 'writing').length;
+  const allActionsCount = actions.length;
 
   const filteredDisabledWebsites = disabledWebsites.filter(d =>
     d.toLowerCase().includes(searchDomainQuery.trim().toLowerCase())
@@ -576,41 +586,7 @@ export default function Options() {
               <p className="text-sm text-slate-500 mt-1">{t.toolbarDesc}</p>
             </div>
 
-              {/* Sub-tabs */}
-              <div className="flex gap-2 p-1 bg-slate-200/60 rounded-xl w-fit">
-                <button
-                  onClick={() => setToolbarFilter('reading')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    toolbarFilter === 'reading'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {t.tabReading}
-                </button>
-                <button
-                  onClick={() => setToolbarFilter('writing')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    toolbarFilter === 'writing'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {t.tabWriting}
-                </button>
-                <button
-                  onClick={() => setToolbarFilter('all')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    toolbarFilter === 'all'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {t.tabAll}
-                </button>
-              </div>
-
-              {/* Toggle Card */}
+            {/* Toggle Card */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">{t.toggleToolbarLabel}</h3>
@@ -751,95 +727,167 @@ export default function Options() {
                 )}
               </div>
 
-              {/* Action List Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+              {/* Action List Section with Folder Tabs */}
+              <div className="space-y-0">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">{t.actionListTitle} ({filteredActions.length})</h3>
+                    <h3 className="text-base font-bold text-slate-900">{t.actionListTitle}</h3>
                     <p className="text-xs text-slate-500">{t.actionListDesc}</p>
                   </div>
                   <button
                     onClick={openAddModal}
-                    className="px-3.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm shadow-blue-200 cursor-pointer"
+                    className="px-3.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm shadow-blue-200 cursor-pointer shrink-0"
                   >
                     <span>+</span> {t.addNewAction}
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {filteredActions.map((action) => {
-                    const displayLabel = (action.isDefault) ? (
-                      action.id === 'translate' ? t.actionTranslate :
-                      action.id === 'summarize' ? t.actionSummarize :
-                      action.id === 'explain' ? t.actionExplain :
-                      action.id === 'rewrite' ? t.actionRewrite : action.label
-                    ) : action.label;
+                {/* Folder Tabs Navigation */}
+                <div className="flex items-end gap-1.5 border-b border-slate-200 pt-2 px-1">
+                  <button
+                    type="button"
+                    onClick={() => setToolbarFilter('reading')}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
+                      toolbarFilter === 'reading'
+                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
+                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
+                    }`}
+                  >
+                    <span className="text-sm">📖</span>
+                    <span>{t.tabReading}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      toolbarFilter === 'reading' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
+                    }`}>
+                      {readingActionsCount}
+                    </span>
+                  </button>
 
-                    return (
-                      <div
-                        key={action.id}
-                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between hover:border-blue-300 transition group"
+                  <button
+                    type="button"
+                    onClick={() => setToolbarFilter('writing')}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
+                      toolbarFilter === 'writing'
+                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
+                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
+                    }`}
+                  >
+                    <span className="text-sm">✍️</span>
+                    <span>{t.tabWriting}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      toolbarFilter === 'writing' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
+                    }`}>
+                      {writingActionsCount}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setToolbarFilter('all')}
+                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
+                      toolbarFilter === 'all'
+                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
+                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
+                    }`}
+                  >
+                    <span className="text-sm">📋</span>
+                    <span>{t.tabAll}</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      toolbarFilter === 'all' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
+                    }`}>
+                      {allActionsCount}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Folder Body Container */}
+                <div className="bg-white p-5 rounded-b-2xl border-x border-b border-slate-200 shadow-xs">
+                  {filteredActions.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      <p className="text-sm text-slate-400 font-medium">{t.noActionsInScene}</p>
+                      <button
+                        onClick={openAddModal}
+                        className="mt-3 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                       >
-                        <div>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{action.icon}</span>
-                              <span className="font-bold text-sm text-slate-800">{displayLabel}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-1.5">
-                              {/* Pin Toggle Button */}
-                              <button
-                                onClick={() => togglePinAction(action.id)}
-                                className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
-                                  action.isPinned
-                                    ? 'text-purple-600 bg-purple-50 hover:bg-purple-100'
-                                    : 'text-slate-300 hover:text-slate-600 hover:bg-slate-100'
-                                }`}
-                                title={action.isPinned ? t.unpinTooltip : t.pinTooltip}
-                              >
-                                📌
-                              </button>
+                        + {t.addNewAction}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {filteredActions.map((action) => {
+                        const displayLabel = (action.isDefault) ? (
+                          action.id === 'translate' ? t.actionTranslate :
+                          action.id === 'summarize' ? t.actionSummarize :
+                          action.id === 'explain' ? t.actionExplain :
+                          action.id === 'rewrite' ? t.actionRewrite : action.label
+                        ) : action.label;
 
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                                action.scene === 'all' 
-                                  ? 'bg-purple-50 text-purple-700 border border-purple-100' 
-                                  : action.scene === 'writing'
-                                  ? 'bg-amber-50 text-amber-700 border border-amber-100'
-                                  : 'bg-blue-50 text-blue-700 border border-blue-100'
-                              }`}>
-                                {action.scene === 'all' ? t.sceneAll : action.scene === 'writing' ? t.sceneWriting : t.sceneReading}
-                              </span>
+                        return (
+                          <div
+                            key={action.id}
+                            className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between hover:border-blue-300 transition group"
+                          >
+                            <div>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{action.icon}</span>
+                                  <span className="font-bold text-sm text-slate-800">{displayLabel}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5">
+                                  {/* Pin Toggle Button */}
+                                  <button
+                                    onClick={() => togglePinAction(action.id)}
+                                    className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
+                                      action.isPinned
+                                        ? 'text-purple-600 bg-purple-50 hover:bg-purple-100'
+                                        : 'text-slate-300 hover:text-slate-600 hover:bg-slate-100'
+                                    }`}
+                                    title={action.isPinned ? t.unpinTooltip : t.pinTooltip}
+                                  >
+                                    📌
+                                  </button>
+
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                    action.scene === 'all' 
+                                      ? 'bg-purple-50 text-purple-700 border border-purple-100' 
+                                      : action.scene === 'writing'
+                                      ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-100'
+                                  }`}>
+                                    {action.scene === 'all' ? t.sceneAll : action.scene === 'writing' ? t.sceneWriting : t.sceneReading}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed font-mono">
+                                {action.isDefault ? (getDefaultPrompt(action.id, appLanguage) || action.prompt) : action.prompt}
+                              </p>
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                              <span>{action.isDefault ? t.defaultBadge : t.customBadge}</span>
+                              {!action.isDefault && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => openEditModal(action)}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
+                                  >
+                                    {t.editAction}
+                                  </button>
+                                  <button
+                                    onClick={() => removeAction(action.id)}
+                                    className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
+                                  >
+                                    {t.deleteAction}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
-
-                          <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed font-mono">
-                            {action.isDefault ? (getDefaultPrompt(action.id, appLanguage) || action.prompt) : action.prompt}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                          <span>{action.isDefault ? t.defaultBadge : t.customBadge}</span>
-                          {!action.isDefault && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => openEditModal(action)}
-                                className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
-                              >
-                                {t.editAction}
-                              </button>
-                              <button
-                                onClick={() => removeAction(action.id)}
-                                className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
-                              >
-                                {t.deleteAction}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -890,9 +938,30 @@ export default function Options() {
                 </div>
               </div>
 
+              {/* AI Output Language Field */}
+              <div className="pt-4 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  {t.outputLangLabel}
+                </label>
+                <p className="text-xs text-slate-500 mb-2.5">
+                  {t.outputLangDesc}
+                </p>
+                <select
+                  className="w-full sm:w-80 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  value={outputLanguage === 'tiếng Việt' ? 'Vietnamese' : outputLanguage}
+                  onChange={(e) => setOutputLanguage(e.target.value)}
+                >
+                  {(t.outputLanguages || t.targetLanguages).map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="pt-2">
                 <button
-                  onClick={() => handleSaveAll()}
+                  onClick={() => handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage)}
                   className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
                 >
                   {t.saveTransBtn}
@@ -1200,7 +1269,7 @@ export default function Options() {
                     {t.promptHint}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {PROMPT_VARIABLES.map((v) => (
+                    {getPromptVariables(t).map((v) => (
                       <button
                         key={v.label}
                         type="button"
