@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Readability } from '@mozilla/readability';
 import tailwindStyles from './index.css?inline';
-import { storage, type UserSettings, type CustomAction, DEFAULT_ACTIONS } from './utils/storage';
+import { storage, type UserSettings, type CustomAction, DEFAULT_ACTIONS, isDomainDisabled, normalizeDomain } from './utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from './utils/i18n';
 import MarkdownRenderer from './components/MarkdownRenderer';
 
@@ -65,6 +65,7 @@ function FloatingToolbar() {
   const [webSearchActive, setWebSearchActive] = useState(true);
   
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showCloseMenu, setShowCloseMenu] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -107,6 +108,7 @@ function FloatingToolbar() {
       // Clicked outside, hide current modal if any
       setShowModal(false);
       setShowMoreMenu(false);
+      setShowCloseMenu(false);
       setPosition(null);
     };
 
@@ -121,54 +123,61 @@ function FloatingToolbar() {
       if (container && container.contains(e.target as Node)) return;
 
       setTimeout(() => {
-        const curSettings = settingsRef.current;
-        if (curSettings && curSettings.showToolbar === false) return;
+        try {
+          const curSettings = settingsRef.current;
+          if (curSettings && curSettings.showToolbar === false) return;
+          if (curSettings && isDomainDisabled(window.location.hostname, curSettings.disabledWebsites)) return;
 
-        let text = '';
-        let isWriting = false;
-        let activeElTarget: HTMLElement | null = null;
+          let text = '';
+          let isWriting = false;
+          let activeElTarget: HTMLElement | null = null;
 
-        const activeEl = document.activeElement as HTMLElement;
+          const activeEl = document.activeElement as HTMLElement;
 
-        if (activeEl && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
-          const start = activeEl.selectionStart ?? 0;
-          const end = activeEl.selectionEnd ?? 0;
-          if (end > start) {
-            text = activeEl.value.substring(start, end).trim();
-            isWriting = true;
-            activeElTarget = activeEl;
-          }
-        } else {
-          const selection = window.getSelection();
-          const selText = selection?.toString().trim();
-          if (selText && selection && selection.rangeCount > 0) {
-            text = selText;
-            if (activeEl && (activeEl.isContentEditable || activeEl.closest('[contenteditable="true"]'))) {
+          if (activeEl && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
+            const start = activeEl.selectionStart ?? 0;
+            const end = activeEl.selectionEnd ?? 0;
+            if (end > start) {
+              text = activeEl.value.substring(start, end).trim();
               isWriting = true;
               activeElTarget = activeEl;
             }
+          } else {
+            const selection = window.getSelection();
+            const selText = selection?.toString().trim();
+            if (selText && selection && selection.rangeCount > 0) {
+              text = selText;
+              if (activeEl && (activeEl.isContentEditable || activeEl.closest('[contenteditable="true"]'))) {
+                isWriting = true;
+                activeElTarget = activeEl;
+              }
+            }
           }
-        }
 
-        if (text) {
-          // Hide previous modal popup when selecting new text
-          setShowModal(false);
+          if (text) {
+            // Hide previous modal popup when selecting new text
+            setShowModal(false);
 
-          // Position EXACTLY at the cursor end point (where mouse released)
-          const endX = e.pageX || (window.innerWidth / 2 + window.scrollX);
-          const endY = e.pageY || (window.innerHeight / 2 + window.scrollY);
+            // Position EXACTLY at the cursor end point (where mouse released)
+            const endX = e.pageX || (window.innerWidth / 2 + window.scrollX);
+            const endY = e.pageY || (window.innerHeight / 2 + window.scrollY);
 
-          setPosition({
-            x: Math.min(Math.max(120, endX), window.innerWidth + window.scrollX - 120),
-            y: endY + 12, // Appear immediately below the cursor end
-          });
-          setSelectedText(text);
-          setTargetElement(activeElTarget);
-          setCurrentScene(isWriting ? 'writing' : 'reading');
-          setShowMoreMenu(false);
-        } else {
-          setPosition(null);
-          setShowMoreMenu(false);
+            setPosition({
+              x: Math.min(Math.max(120, endX), window.innerWidth + window.scrollX - 120),
+              y: endY + 12, // Appear immediately below the cursor end
+            });
+            setSelectedText(text);
+            setTargetElement(activeElTarget);
+            setCurrentScene(isWriting ? 'writing' : 'reading');
+            setShowMoreMenu(false);
+            setShowCloseMenu(false);
+          } else {
+            setPosition(null);
+            setShowMoreMenu(false);
+            setShowCloseMenu(false);
+          }
+        } catch (err) {
+          console.error('[Lightning AI] Toolbar error:', err);
         }
       }, 30);
     };
@@ -372,7 +381,22 @@ function FloatingToolbar() {
   const closeToolbar = () => {
     setPosition(null);
     setShowMoreMenu(false);
+    setShowCloseMenu(false);
     window.getSelection()?.removeAllRanges();
+  };
+
+  const handleDisableOnCurrentSite = async () => {
+    const currentHost = normalizeDomain(window.location.hostname);
+    const curSettings = settings || settingsRef.current;
+    if (currentHost && curSettings) {
+      const existing = curSettings.disabledWebsites || [];
+      if (!existing.includes(currentHost)) {
+        const updated = [...existing, currentHost];
+        setSettings({ ...curSettings, disabledWebsites: updated });
+        await storage.saveSettings({ disabledWebsites: updated });
+      }
+    }
+    closeToolbar();
   };
 
   const replaceText = () => {
@@ -439,7 +463,10 @@ function FloatingToolbar() {
           {/* Always Visible More Button (...) */}
           <div className="relative flex items-center justify-center">
             <button
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              onClick={() => {
+                setShowMoreMenu(!showMoreMenu);
+                setShowCloseMenu(false);
+              }}
               className={`h-8 w-8 flex items-center justify-center rounded-full hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer text-slate-700 ${
                 showMoreMenu ? 'bg-purple-100 text-purple-700 font-bold' : ''
               }`}
@@ -524,14 +551,57 @@ function FloatingToolbar() {
           {/* Divider */}
           <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
 
-          {/* Close Button */}
-          <button
-            onClick={closeToolbar}
-            className="h-6 w-6 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer text-xs"
-            title={t.closeBtn}
-          >
-            ✕
-          </button>
+          {/* Close Button & Options Popover */}
+          <div className="relative flex items-center justify-center">
+            <button
+              onClick={() => {
+                setShowCloseMenu(!showCloseMenu);
+                setShowMoreMenu(false);
+              }}
+              className={`h-6 w-6 flex items-center justify-center rounded-full transition-colors cursor-pointer text-xs ${
+                showCloseMenu ? 'bg-slate-200 text-slate-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+              }`}
+              title={t.closeBtn}
+              aria-label={t.closeBtn}
+            >
+              ✕
+            </button>
+
+            {/* Close Options Popover */}
+            {showCloseMenu && (
+              <div 
+                className="lightning-dropdown absolute top-full mt-2.5 right-0 bg-white rounded-2xl py-1.5 min-w-[210px] z-50 animate-fade-in-up text-left shadow-2xl divide-y divide-slate-100"
+                style={{
+                  border: '2px solid #0f172a',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
+                }}
+              >
+                <div className="py-0.5">
+                  <button
+                    onClick={closeToolbar}
+                    className="w-full px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer text-left"
+                  >
+                    <span className="text-slate-400 text-xs shrink-0">✕</span>
+                    <span className="truncate">{t.closeToolbarThisTime}</span>
+                  </button>
+                </div>
+                <div className="py-0.5">
+                  <button
+                    onClick={handleDisableOnCurrentSite}
+                    className="w-full px-3.5 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 transition-colors cursor-pointer text-left"
+                  >
+                    <span className="text-rose-500 text-sm shrink-0">🚫</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate font-semibold">{t.disableOnThisSite}</span>
+                      <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                        {normalizeDomain(window.location.hostname)}
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -745,6 +815,10 @@ function FloatingToolbar() {
 
 function init() {
   if (document.getElementById('lightning-ai-root')) return;
+  if (!document.body) {
+    window.addEventListener('DOMContentLoaded', init, { once: true });
+    return;
+  }
 
   const container = document.createElement('div');
   container.id = 'lightning-ai-root';

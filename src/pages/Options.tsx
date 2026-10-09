@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { type UserSettings, type CustomAction, DEFAULT_ACTIONS } from '../utils/storage';
+import { type UserSettings, type CustomAction, DEFAULT_ACTIONS, normalizeDomain } from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
 
-type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help';
+type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help' | 'about';
 
 const PRESET_ICONS = [
   '✍️', '🌐', '📝', '💡', '✨', '🔍', '📊', '🛠️', 
@@ -42,6 +42,10 @@ export default function Options() {
   const [showToolbar, setShowToolbar] = useState(true);
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [actions, setActions] = useState<CustomAction[]>([]);
+  const [disabledWebsites, setDisabledWebsites] = useState<string[]>([]);
+  const [newDomainInput, setNewDomainInput] = useState('');
+  const [searchDomainQuery, setSearchDomainQuery] = useState('');
+  const [domainError, setDomainError] = useState('');
   
   const [saved, setSaved] = useState(false);
 
@@ -76,6 +80,7 @@ export default function Options() {
       setShowToolbar(settings.showToolbar !== false);
       setWebSearchEnabled(settings.webSearchEnabled !== false);
       setActions(settings.actions && settings.actions.length > 0 ? settings.actions : DEFAULT_ACTIONS);
+      setDisabledWebsites(settings.disabledWebsites || []);
     }
   }, [settings]);
 
@@ -110,19 +115,19 @@ export default function Options() {
     const container = (e?.currentTarget as HTMLElement) || mainContainerRef.current;
     if (!container) return;
 
-    const sections: SectionId[] = ['general', 'toolbar', 'translation', 'provider', 'help'];
+    const sections: SectionId[] = ['general', 'toolbar', 'translation', 'provider', 'help', 'about'];
     const containerTop = container.getBoundingClientRect().top;
     const containerHeight = container.clientHeight;
     const scrollHeight = container.scrollHeight;
     const scrollTop = container.scrollTop;
 
-    // Bottom check: if scrolled near the bottom, activate the last section ('help')
+    // Bottom check: if scrolled near the bottom, activate the last section ('about')
     const isNearBottom = scrollTop + containerHeight >= scrollHeight - 60;
     if (isNearBottom) {
-      if (activeSectionRef.current !== 'help') {
-        activeSectionRef.current = 'help';
-        setActiveSection('help');
-        scrollNavToItem('help');
+      if (activeSectionRef.current !== 'about') {
+        activeSectionRef.current = 'about';
+        setActiveSection('about');
+        scrollNavToItem('about');
       }
       return;
     }
@@ -236,12 +241,14 @@ export default function Options() {
     newActions?: CustomAction[], 
     newShowToolbar?: boolean,
     newAppLang?: LanguageCode,
-    newWebSearch?: boolean
+    newWebSearch?: boolean,
+    newDisabledWebsites?: string[]
   ) => {
     const actionsToSave = newActions || actions;
     const toolbarToSave = newShowToolbar !== undefined ? newShowToolbar : showToolbar;
     const appLangToSave = newAppLang || appLanguage;
     const webSearchToSave = newWebSearch !== undefined ? newWebSearch : webSearchEnabled;
+    const disabledWebsitesToSave = newDisabledWebsites !== undefined ? newDisabledWebsites : disabledWebsites;
     
     await updateSettings({ 
       apiKey: localKey, 
@@ -253,9 +260,34 @@ export default function Options() {
       actions: actionsToSave,
       showToolbar: toolbarToSave,
       webSearchEnabled: webSearchToSave,
+      disabledWebsites: disabledWebsitesToSave,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleAddDomain = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setDomainError('');
+    const cleaned = normalizeDomain(newDomainInput);
+    if (!cleaned) {
+      setDomainError(t.invalidDomainFormat);
+      return;
+    }
+    if (disabledWebsites.includes(cleaned)) {
+      setDomainError(t.websiteAlreadyExists);
+      return;
+    }
+    const updated = [...disabledWebsites, cleaned];
+    setDisabledWebsites(updated);
+    setNewDomainInput('');
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, updated);
+  };
+
+  const handleRemoveDomain = async (domainToRemove: string) => {
+    const updated = disabledWebsites.filter(d => d !== domainToRemove);
+    setDisabledWebsites(updated);
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, updated);
   };
 
   const handleToggleToolbar = async () => {
@@ -376,6 +408,10 @@ export default function Options() {
     return a.scene === 'all' || a.scene === toolbarFilter;
   });
 
+  const filteredDisabledWebsites = disabledWebsites.filter(d =>
+    d.toLowerCase().includes(searchDomainQuery.trim().toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-500 font-medium">
@@ -463,6 +499,19 @@ export default function Options() {
           >
             <span className="text-lg">❓</span>
             <span>{t.navHelp}</span>
+          </button>
+
+          <button
+            id="nav-item-about"
+            onClick={() => scrollToSection('about')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'about'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lg">ℹ️</span>
+            <span>{t.navAbout}</span>
           </button>
         </nav>
 
@@ -604,6 +653,102 @@ export default function Options() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Disabled Websites Card */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🚫</span>
+                      <h3 className="text-sm font-semibold text-slate-900">{t.disabledWebsitesTitle}</h3>
+                      <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-full">
+                        {disabledWebsites.length}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{t.disabledWebsitesDesc}</p>
+                  </div>
+                </div>
+
+                {/* Add Website Input & Button */}
+                <form onSubmit={handleAddDomain} className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={newDomainInput}
+                      onChange={(e) => {
+                        setNewDomainInput(e.target.value);
+                        if (domainError) setDomainError('');
+                      }}
+                      placeholder={t.addWebsitePlaceholder}
+                      className="w-full px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!newDomainInput.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-xs shadow-blue-200 flex items-center gap-1.5 shrink-0"
+                  >
+                    <span>+</span> {t.addWebsiteBtn}
+                  </button>
+                </form>
+
+                {domainError && (
+                  <p className="text-xs text-rose-500 font-medium animate-fade-in-up">
+                    {domainError}
+                  </p>
+                )}
+
+                {/* Search if there are more than 4 websites */}
+                {disabledWebsites.length > 4 && (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchDomainQuery}
+                      onChange={(e) => setSearchDomainQuery(e.target.value)}
+                      placeholder={t.searchWebsitesPlaceholder}
+                      className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                    />
+                  </div>
+                )}
+
+                {/* Websites List Rows */}
+                {disabledWebsites.length === 0 ? (
+                  <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-center">
+                    <p className="text-xs text-slate-400">{t.noDisabledWebsites}</p>
+                  </div>
+                ) : filteredDisabledWebsites.length === 0 ? (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                    <p className="text-xs text-slate-400">{t.noMatchingWebsites}</p>
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                    {filteredDisabledWebsites.map((domain) => (
+                      <div
+                        key={domain}
+                        className="px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-slate-400 text-sm shrink-0">🌐</span>
+                          <span className="text-xs font-mono font-medium text-slate-800 truncate">
+                            {domain}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDomain(domain)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title={t.removeWebsiteTooltip}
+                          aria-label={t.removeWebsiteTooltip}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Action List Section */}
@@ -898,6 +1043,71 @@ export default function Options() {
                   <p className="text-xs text-slate-500">
                     {t.guidePrivacyDesc}
                   </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 6: ABOUT */}
+          <section id="section-about" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.aboutTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {t.aboutDesc}
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold border border-blue-100">
+                  ⚡
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">{t.appName}</h3>
+                  <p className="text-xs text-slate-500">{t.appDesc}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    {t.aboutNameLabel}
+                  </span>
+                  <span className="text-sm font-bold text-slate-800">
+                    Terry
+                  </span>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    {t.aboutWebsiteLabel}
+                  </span>
+                  <a
+                    href="https://relipa.global/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 break-all transition-colors"
+                  >
+                    <span>https://relipa.global/</span>
+                    <span className="text-xs">↗</span>
+                  </a>
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    {t.aboutContactLabel}
+                  </span>
+                  <a
+                    href="mailto:tuyennq.1001@gmail.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1.5 break-all transition-colors"
+                  >
+                    <span>tuyennq.1001@gmail.com</span>
+                    <span className="text-xs">✉</span>
+                  </a>
                 </div>
               </div>
             </div>

@@ -18,6 +18,7 @@ export interface UserSettings {
   actions: CustomAction[];
   showToolbar: boolean;
   webSearchEnabled?: boolean;
+  disabledWebsites?: string[];
 }
 
 export const DEFAULT_ACTIONS: CustomAction[] = [
@@ -68,9 +69,75 @@ export const DEFAULT_SETTINGS: UserSettings = {
   actions: DEFAULT_ACTIONS,
   showToolbar: true,
   webSearchEnabled: true,
+  disabledWebsites: [],
 };
 
-import { getDefaultPrompt, type LanguageCode } from './i18n';
+import { getDefaultPrompt, type LanguageCode } from './i18n.ts';
+
+/**
+ * Normalizes a URL or domain string to a clean domain/hostname.
+ * Examples:
+ * - "https://www.youtube.com/watch?v=123" -> "youtube.com"
+ * - "http://docs.google.com/document/d/..." -> "docs.google.com"
+ * - "www.facebook.com" -> "facebook.com"
+ * - "sub.domain.co.uk:8080/path" -> "sub.domain.co.uk"
+ */
+export function normalizeDomain(input: string): string {
+  let str = (input || '').trim().toLowerCase();
+  if (!str) return '';
+  // Remove protocol if present
+  str = str.replace(/^[a-z]+:\/\//i, '');
+  // Remove path, query, hash
+  str = str.split('/')[0];
+  str = str.split('?')[0];
+  str = str.split('#')[0];
+  // Remove port
+  str = str.split(':')[0];
+  // Strip leading 'www.'
+  if (str.startsWith('www.')) {
+    str = str.slice(4);
+  }
+  // Strip leading and trailing dots
+  str = str.replace(/^\.+|\.+$/g, '');
+  return str.trim();
+}
+
+/**
+ * Checks if a given hostname matches any disabled domain in the list.
+ * Supports subdomain hierarchy:
+ * e.g., if 'google.com' is disabled, 'docs.google.com' and 'google.com' match.
+ * If 'docs.google.com' is disabled, 'docs.google.com' matches, but 'google.com' does NOT.
+ * Single labels without a dot (e.g., 'com', 'org', 'localhost') will NOT match all subdomains.
+ */
+export function isDomainDisabled(hostname: string, disabledList?: string[]): boolean {
+  if (!hostname || !disabledList || !Array.isArray(disabledList) || disabledList.length === 0) return false;
+  const normalizedHost = normalizeDomain(hostname);
+  if (!normalizedHost) return false;
+
+  return disabledList.some((item) => {
+    const disabled = normalizeDomain(item);
+    if (!disabled) return false;
+    // Exact match
+    if (normalizedHost === disabled) return true;
+    // Subdomain match: only apply if disabled pattern contains at least one dot
+    if (disabled.includes('.') && normalizedHost.endsWith(`.${disabled}`)) {
+      return true;
+    }
+    return false;
+  });
+}
+
+function sanitizeDisabledWebsites(list?: string[]): string[] {
+  if (!Array.isArray(list)) return [];
+  const set = new Set<string>();
+  for (const item of list) {
+    const cleaned = normalizeDomain(item);
+    if (cleaned) {
+      set.add(cleaned);
+    }
+  }
+  return Array.from(set);
+}
 
 function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
   if (!Array.isArray(actionsList) || actionsList.length === 0) {
@@ -101,6 +168,7 @@ export const storage = {
         ...DEFAULT_SETTINGS,
         ...saved,
         actions: sanitizeActions(saved.actions, lang),
+        disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
       };
     } catch {
       return DEFAULT_SETTINGS;
@@ -113,7 +181,10 @@ export const storage = {
     const newSettings = { 
       ...currentSettings, 
       ...settings,
-      actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang)
+      actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang),
+      disabledWebsites: settings.disabledWebsites !== undefined
+        ? sanitizeDisabledWebsites(settings.disabledWebsites)
+        : sanitizeDisabledWebsites(currentSettings.disabledWebsites),
     };
     await chrome.storage.local.set({ settings: newSettings });
   },
@@ -127,6 +198,7 @@ export const storage = {
           ...DEFAULT_SETTINGS,
           ...val,
           actions: sanitizeActions(val.actions, lang),
+          disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
         });
       }
     };

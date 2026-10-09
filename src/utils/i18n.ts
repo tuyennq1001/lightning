@@ -39,6 +39,7 @@ export const translations = {
     navTranslation: 'Dịch thuật',
     navProvider: 'Cấu hình AI & Model',
     navHelp: 'Trợ giúp & Hướng dẫn',
+    navAbout: 'Giới thiệu',
     // Toolbar Tab
     toolbarTitle: 'Thanh công cụ bôi đen',
     toolbarDesc: 'Tuỳ chỉnh thanh công cụ nổi, menu chuột phải và các thao tác ghim.',
@@ -59,6 +60,19 @@ export const translations = {
     sceneAll: 'Mọi lúc',
     sceneReading: 'Khi đọc',
     sceneWriting: 'Khi viết',
+    // Disabled Websites
+    disabledWebsitesTitle: 'Danh sách website tắt thanh công cụ',
+    disabledWebsitesDesc: 'Thanh công cụ bôi đen sẽ không hiển thị trên các website này.',
+    addWebsitePlaceholder: 'Nhập tên miền (ví dụ: youtube.com, github.com)...',
+    addWebsiteBtn: 'Thêm',
+    searchWebsitesPlaceholder: 'Tìm kiếm website...',
+    noDisabledWebsites: 'Chưa có website nào trong danh sách tắt.',
+    noMatchingWebsites: 'Không tìm thấy website nào phù hợp.',
+    removeWebsiteTooltip: 'Xoá khỏi danh sách',
+    websiteAlreadyExists: 'Website này đã có trong danh sách.',
+    invalidDomainFormat: 'Vui lòng nhập tên miền hợp lệ.',
+    closeToolbarThisTime: 'Đóng lần này',
+    disableOnThisSite: 'Tắt trên trang này',
     // Provider Tab
     providerTitle: 'Cấu hình AI & Mô hình',
     providerDesc: 'Chọn nhà cung cấp AI và điền API Key cá nhân của bạn. Không cần tạo tài khoản.',
@@ -125,6 +139,12 @@ export const translations = {
     guideSidebarDesc: 'Bấm vào biểu tượng Lightning trên thanh công cụ tiện ích để mở khung chat AI liên tục bên cạnh trang web.',
     guidePrivacyTitle: 'Bảo mật & Quyền riêng tư',
     guidePrivacyDesc: 'Mô hình Bring Your Own Key không dùng máy chủ trung gian. Toàn bộ yêu cầu đi trực tiếp từ máy của bạn tới API của Google/OpenAI/Anthropic.',
+    // About Section
+    aboutTitle: 'Giới thiệu',
+    aboutDesc: 'Thông tin về tác giả và dự án Lightning.',
+    aboutNameLabel: 'Tác giả',
+    aboutWebsiteLabel: 'Website',
+    aboutContactLabel: 'Liên hệ',
     // Modal
     modalAddTitle: 'Thêm thao tác mới',
     modalEditTitle: 'Chỉnh sửa thao tác',
@@ -213,6 +233,7 @@ export const translations = {
     navTranslation: 'Translation',
     navProvider: 'AI Provider & Models',
     navHelp: 'Help & Guide',
+    navAbout: 'About',
     // Toolbar Tab
     toolbarTitle: 'Selection Toolbar',
     toolbarDesc: 'Customize the floating toolbar, context menu, and pinned actions.',
@@ -233,6 +254,19 @@ export const translations = {
     sceneAll: 'All scenes',
     sceneReading: 'Reading',
     sceneWriting: 'Writing',
+    // Disabled Websites
+    disabledWebsitesTitle: 'Disabled Websites',
+    disabledWebsitesDesc: 'The selection toolbar will not appear on these websites.',
+    addWebsitePlaceholder: 'Enter domain (e.g. youtube.com, github.com)...',
+    addWebsiteBtn: 'Add',
+    searchWebsitesPlaceholder: 'Search websites...',
+    noDisabledWebsites: 'No disabled websites yet.',
+    noMatchingWebsites: 'No matching websites found.',
+    removeWebsiteTooltip: 'Remove from list',
+    websiteAlreadyExists: 'This website is already in the list.',
+    invalidDomainFormat: 'Please enter a valid domain name.',
+    closeToolbarThisTime: 'Close this time',
+    disableOnThisSite: 'Disable on this site',
     // Provider Tab
     providerTitle: 'AI Configuration & Models',
     providerDesc: 'Select an AI provider and enter your personal API Key. No login required.',
@@ -299,6 +333,12 @@ export const translations = {
     guideSidebarDesc: 'Click the Lightning extension icon in the browser toolbar to open the continuous AI chat panel.',
     guidePrivacyTitle: 'Security & Privacy',
     guidePrivacyDesc: 'The Bring Your Own Key model bypasses third-party servers. All requests go directly to Google/OpenAI/Anthropic.',
+    // About Section
+    aboutTitle: 'About',
+    aboutDesc: 'Information about the author and Lightning project.',
+    aboutNameLabel: 'Author',
+    aboutWebsiteLabel: 'Website',
+    aboutContactLabel: 'Contact',
     // Modal
     modalAddTitle: 'Add Action',
     modalEditTitle: 'Edit Action',
@@ -387,6 +427,7 @@ export const translations = {
     navTranslation: '翻訳設定',
     navProvider: 'AI設定 & モデル',
     navHelp: 'ヘルプ＆ガイド',
+    navAbout: '概要',
     // Toolbar Tab
     toolbarTitle: 'テキスト選択ツールバー',
     toolbarDesc: 'テキスト選択時のフローティングツールバーとアクションをカスタマイズします。',
@@ -407,6 +448,19 @@ export const translations = {
     sceneAll: 'すべて',
     sceneReading: '閲覧時',
     sceneWriting: '編集時',
+    // Disabled Websites
+    disabledWebsitesTitle: '無効化されたウェブサイト',
+    disabledWebsitesDesc: 'これらのウェブサイトではテキスト選択ツールバーが表示されません。',
+    addWebsitePlaceholder: 'ドメインを入力 (例: youtube.com, github.com)...',
+    addWebsiteBtn: '追加',
+    searchWebsitesPlaceholder: 'ウェブサイトを検索...',
+    noDisabledWebsites: '無効化されたウェブサイトはありません。',
+    noMatchingWebsites: '一致するウェブサイトが見つかりません。',
+    removeWebsiteTooltip: 'リストから削除',
+    websiteAlreadyExists: 'このウェブサイトはすでにリストに存在します。',
+    invalidDomainFormat: '有効なドメイン名を入力してください。',
+    closeToolbarThisTime: '今回は閉じる',
+    disableOnThisSite: 'このサイトで無効化',
     // Provider Tab
     providerTitle: 'AI設定 & モデル',
     providerDesc: 'AIプロバイダーを選択し、個人のAPIキーを入力してください。ログイン不要。',
@@ -473,6 +527,12 @@ export const translations = {
     guideSidebarDesc: 'ツールバーのLightningアイコンをクリックすると、常駐チャットパネルが開きます。',
     guidePrivacyTitle: 'セキュリティ & プライバシー',
     guidePrivacyDesc: 'Bring Your Own Key方式により仲介サーバーを使用しません。リクエストはお使いの端末から各AIへ直接送信されます。',
+    // About Section
+    aboutTitle: '概要',
+    aboutDesc: '開発者およびLightningプロジェクトに関する情報。',
+    aboutNameLabel: '開発者',
+    aboutWebsiteLabel: 'ウェブサイト',
+    aboutContactLabel: '連絡先',
     // Modal
     modalAddTitle: 'アクションを追加',
     modalEditTitle: 'アクションを編集',
