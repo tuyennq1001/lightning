@@ -1061,9 +1061,7 @@ export default function Options() {
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
               <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold border border-blue-100">
-                  ⚡
-                </div>
+                <img src="/icons/icon48.png" alt="Lightning Logo" className="w-12 h-12 rounded-2xl shadow-sm" />
                 <div>
                   <h3 className="text-base font-bold text-slate-900">{t.appName}</h3>
                   <p className="text-xs text-slate-500">{t.appDesc}</p>
