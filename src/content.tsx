@@ -285,6 +285,7 @@ function FloatingToolbar() {
     });
     setAiResponse('');
     setQuickAskQuestion('');
+    setWebSearchActive(settings?.webSearchEnabled ?? false);
     setShowModal(true);
     setPosition(null);
     setShowMoreMenu(false);
@@ -356,7 +357,8 @@ function FloatingToolbar() {
 
     chrome.runtime.sendMessage({
       action: 'ASK_AI',
-      messages: [{ role: 'user', content: finalPrompt }]
+      messages: [{ role: 'user', content: finalPrompt }],
+      webSearch: false,
     });
   };
 

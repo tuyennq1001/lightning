@@ -70,7 +70,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   appLanguage: 'vi',
   actions: DEFAULT_ACTIONS,
   showToolbar: true,
-  webSearchEnabled: true,
+  webSearchEnabled: false,
   disabledWebsites: [],
 };
 
