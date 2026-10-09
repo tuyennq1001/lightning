@@ -131,17 +131,19 @@ Dự án được phân định thành 4 môi trường thực thi biệt lập:
     - Google Gemini: `https://generativelanguage.googleapis.com`
     - OpenAI: `https://api.openai.com`
     - Anthropic Claude: `https://api.anthropic.com`
+    - OpenRouter: `https://openrouter.ai`
   - **Tuyệt đối cấm** in API Key, Token, hoặc Headers nhạy cảm ra `console.log`.
 - **Đặc Thù Nhà Cung Cấp (Provider Rules)**:
   - **Anthropic Claude**: Khi gọi trực tiếp từ extension client, **bắt buộc** phải kèm header `'anthropic-dangerous-direct-browser-access': 'true'`.
   - **Google Gemini**: Chuẩn hóa tin nhắn sang định dạng `{ role: 'user' | 'model', parts: [{ text }] }`, tách riêng tin nhắn hệ thống vào `systemInstruction`.
-  - **OpenAI**: Chuẩn hóa format Chat Completions với cờ `stream: true`.
+  - **OpenAI & OpenRouter**: Chuẩn hóa format Chat Completions với cờ `stream: true`. Với OpenRouter, đính kèm headers `'HTTP-Referer'` và `'X-Title'`.
   - Phân tích luồng Server-Sent Events (SSE) an toàn qua hàm `parseSSEStream`, xử lý chuẩn các dòng `data: [DONE]`.
 - **Mô Hình Fallback Mặc Định (Model Fallback)**:
   - Luôn cấu hình model mặc định đáng tin cậy nếu người dùng chưa chọn model:
     - Gemini: `gemini-1.5-flash`
     - OpenAI: `gpt-4o-mini`
     - Claude: `claude-3-haiku-20240307`
+    - OpenRouter: `meta-llama/llama-3.3-70b-instruct:free`
 
 ---
 

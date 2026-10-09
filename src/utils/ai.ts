@@ -35,6 +35,8 @@ export async function* streamAIResponse(
       yield* streamGemini(messages, cleanSettings, options);
     } else if (cleanSettings.provider === 'claude') {
       yield* streamClaude(messages, cleanSettings, options);
+    } else if (cleanSettings.provider === 'openrouter') {
+      yield* streamOpenRouter(messages, cleanSettings, options);
     } else {
       yield t.errUnsupportedProvider;
     }
@@ -241,6 +243,55 @@ async function* streamClaude(messages: ChatMessage[], settings: UserSettings, op
       return data.delta.text || '';
     }
     return '';
+  });
+}
+
+async function* streamOpenRouter(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
+  let finalMessages = messages;
+  const shouldSearch = options?.webSearch ?? settings.webSearchEnabled ?? false;
+  if (shouldSearch) {
+    const lang = (settings.appLanguage as LanguageCode) || 'vi';
+    const systemPrompt = lang === 'ja'
+      ? 'ウェブ検索モードが有効です。最新かつ正確な情報を提供し、可能であれば出典を引用してください。'
+      : lang === 'en'
+      ? 'Web search mode is enabled. Provide the most up-to-date and accurate information, citing sources where available.'
+      : 'Chế độ tìm kiếm Internet đang bật. Hãy cung cấp câu trả lời mới nhất, chính xác nhất và trích dẫn thông tin nếu có.';
+    finalMessages = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...messages
+    ];
+  }
+
+  const modelId = settings.modelId?.trim() || 'meta-llama/llama-3.3-70b-instruct:free';
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${settings.apiKey}`,
+      'HTTP-Referer': 'https://github.com/tuyennq1001/lightning',
+      'X-Title': 'Lightning AI',
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: finalMessages,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${response.status}`);
+  }
+
+  yield* parseSSEStream(response, (data) => {
+    if (data.error) {
+      throw new Error(data.error.message || 'Lỗi API OpenRouter');
+    }
+    return data.choices?.[0]?.delta?.content || '';
   });
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import { type UserSettings, type CustomAction, DEFAULT_ACTIONS, normalizeDomain, getDefaultOutputLanguage } from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
@@ -49,6 +49,10 @@ export default function Options() {
   const [localKey, setLocalKey] = useState('');
   const [provider, setProvider] = useState<UserSettings['provider']>('gemini');
   const [modelId, setModelId] = useState('');
+  const [apiKeys, setApiKeys] = useState<Partial<Record<UserSettings['provider'], string>>>({});
+  const [modelIds, setModelIds] = useState<Partial<Record<UserSettings['provider'], string>>>({});
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [isManualModelInput, setIsManualModelInput] = useState(false);
   const [sourceLanguage, setSourceLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('Vietnamese');
   const [outputLanguage, setOutputLanguage] = useState('Vietnamese');
@@ -79,15 +83,26 @@ export default function Options() {
 
   const t = getT(appLanguage);
 
+  const filteredModels = useMemo(() => {
+    if (!modelSearchQuery.trim()) return models;
+    const query = modelSearchQuery.toLowerCase();
+    return models.filter((m) => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query));
+  }, [models, modelSearchQuery]);
+
   useEffect(() => {
     document.title = 'Lightning Options';
   }, []);
 
   useEffect(() => {
     if (settings) {
-      setLocalKey(settings.apiKey || '');
-      setProvider(settings.provider || 'gemini');
-      setModelId(settings.modelId || '');
+      const activeProv = settings.provider || 'gemini';
+      const storedApiKeys = settings.apiKeys || {};
+      const storedModelIds = settings.modelIds || {};
+      setApiKeys(storedApiKeys);
+      setModelIds(storedModelIds);
+      setProvider(activeProv);
+      setLocalKey(storedApiKeys[activeProv] || settings.apiKey || '');
+      setModelId(storedModelIds[activeProv] || settings.modelId || '');
       setSourceLanguage(settings.sourceLanguage || 'auto');
       setTargetLanguage(settings.targetLanguage || 'Vietnamese');
       setOutputLanguage(settings.outputLanguage || getDefaultOutputLanguage((settings.appLanguage as LanguageCode) || 'vi'));
@@ -180,9 +195,17 @@ export default function Options() {
   }, [loading]);
 
   const handleProviderChange = (newProvider: UserSettings['provider']) => {
+    const updatedApiKeys = { ...apiKeys, [provider]: localKey.trim() };
+    const updatedModelIds = { ...modelIds, [provider]: modelId.trim() };
+    setApiKeys(updatedApiKeys);
+    setModelIds(updatedModelIds);
+
     setProvider(newProvider);
+    setLocalKey(updatedApiKeys[newProvider] || '');
+    setModelId(updatedModelIds[newProvider] || '');
     setModels([]);
-    setModelId('');
+    setModelSearchQuery('');
+    setIsManualModelInput(false);
     setModelError('');
   };
 
@@ -225,6 +248,23 @@ export default function Options() {
           { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
           { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
         ];
+      } else if (provider === 'openrouter') {
+        const res = await fetch('https://openrouter.ai/api/v1/models', {
+          headers: { Authorization: `Bearer ${localKey.trim()}` }
+        });
+        if (!res.ok) throw new Error('API Key không hợp lệ hoặc lỗi mạng');
+        const data = await res.json();
+        loadedModels = (data.data || []).map((m: any) => ({
+          id: m.id,
+          name: m.name || m.id,
+        }));
+        loadedModels.sort((a, b) => {
+          const aFree = a.id.includes(':free') || a.id.toLowerCase().includes('free');
+          const bFree = b.id.includes(':free') || b.id.toLowerCase().includes('free');
+          if (aFree && !bFree) return -1;
+          if (!aFree && bFree) return 1;
+          return a.id.localeCompare(b.id);
+        });
       }
       
       setModels(loadedModels);
@@ -240,6 +280,12 @@ export default function Options() {
         } else if (provider === 'openai') {
           const bestModel = loadedModels.find(m => m.id === 'gpt-4o' || m.id === 'gpt-4-turbo');
           if (bestModel) defaultModel = bestModel.id;
+        } else if (provider === 'openrouter') {
+          if (modelId && loadedModels.some(m => m.id === modelId)) {
+            defaultModel = modelId;
+          } else {
+            defaultModel = loadedModels[0].id;
+          }
         }
         setModelId(defaultModel);
       } else {
@@ -267,10 +313,17 @@ export default function Options() {
     const disabledWebsitesToSave = newDisabledWebsites !== undefined ? newDisabledWebsites : disabledWebsites;
     const outputLangToSave = newOutputLang !== undefined ? newOutputLang : outputLanguage;
     
+    const updatedApiKeys = { ...apiKeys, [provider]: localKey.trim() };
+    const updatedModelIds = { ...modelIds, [provider]: modelId.trim() };
+    setApiKeys(updatedApiKeys);
+    setModelIds(updatedModelIds);
+
     await updateSettings({ 
       apiKey: localKey.trim(), 
       provider, 
-      modelId, 
+      modelId: modelId.trim(), 
+      apiKeys: updatedApiKeys,
+      modelIds: updatedModelIds,
       sourceLanguage, 
       targetLanguage,
       outputLanguage: outputLangToSave,
@@ -1032,6 +1085,7 @@ export default function Options() {
                     <option value="gemini">{t.providerGemini}</option>
                     <option value="openai">{t.providerOpenAI}</option>
                     <option value="claude">{t.providerClaude}</option>
+                    <option value="openrouter">{t.providerOpenRouter}</option>
                   </select>
                   <ChevronDownIcon />
                 </div>
@@ -1045,7 +1099,15 @@ export default function Options() {
                   type="password"
                   required
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                  placeholder={`Dán API Key ${provider} tại đây...`}
+                  placeholder={
+                    provider === 'openrouter'
+                      ? 'sk-or-v1-...'
+                      : provider === 'openai'
+                      ? 'sk-...'
+                      : provider === 'claude'
+                      ? 'sk-ant-...'
+                      : 'AIzaSy...'
+                  }
                   value={localKey}
                   onChange={(e) => setLocalKey(e.target.value)}
                 />
@@ -1057,36 +1119,73 @@ export default function Options() {
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                     {t.modelLabel}
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleLoadModels}
-                    disabled={loadingModels || !localKey.trim()}
-                    className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold px-2.5 py-1 bg-blue-50 rounded-lg transition cursor-pointer"
-                  >
-                    {loadingModels ? t.loadingModels : t.loadModelsBtn}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {models.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsManualModelInput(!isManualModelInput)}
+                        className="text-xs text-slate-600 hover:text-slate-900 font-medium px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+                      >
+                        {isManualModelInput ? t.selectFromList : t.enterModelManually}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleLoadModels}
+                      disabled={loadingModels || !localKey.trim()}
+                      className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed font-semibold px-2.5 py-1 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                    >
+                      {loadingModels ? t.loadingModels : t.loadModelsBtn}
+                    </button>
+                  </div>
                 </div>
 
-                {models.length > 0 ? (
-                  <div className="relative">
-                    <select
-                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
-                      value={modelId}
-                      onChange={(e) => setModelId(e.target.value)}
-                    >
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.id})
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon />
+                {models.length > 0 && !isManualModelInput ? (
+                  <div className="space-y-2">
+                    {/* Search Filter for models */}
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                        🔍
+                      </div>
+                      <input
+                        type="text"
+                        value={modelSearchQuery}
+                        onChange={(e) => setModelSearchQuery(e.target.value)}
+                        placeholder={t.searchModelPlaceholder}
+                        className="w-full pl-8 pr-16 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                      />
+                      <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[11px] text-slate-400">
+                        {filteredModels.length}/{models.length}
+                      </span>
+                    </div>
+
+                    {/* Select Dropdown */}
+                    {filteredModels.length > 0 ? (
+                      <div className="relative">
+                        <select
+                          className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                          value={modelId}
+                          onChange={(e) => setModelId(e.target.value)}
+                        >
+                          {filteredModels.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} ({m.id})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon />
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 text-center">
+                        {t.noMatchingModels}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <input
                     type="text"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    placeholder="Nhập tên model hoặc tải danh sách..."
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    placeholder={provider === 'openrouter' ? 'meta-llama/llama-3.3-70b-instruct:free' : t.modelPlaceholder}
                     value={modelId}
                     onChange={(e) => setModelId(e.target.value)}
                   />

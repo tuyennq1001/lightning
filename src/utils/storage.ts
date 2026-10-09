@@ -8,10 +8,14 @@ export interface CustomAction {
   isPinned?: boolean;
 }
 
+export type AIProvider = 'openai' | 'gemini' | 'claude' | 'openrouter';
+
 export interface UserSettings {
   apiKey: string;
-  provider: 'openai' | 'gemini' | 'claude';
+  provider: AIProvider;
   modelId?: string;
+  apiKeys?: Partial<Record<AIProvider, string>>;
+  modelIds?: Partial<Record<AIProvider, string>>;
   sourceLanguage: string;
   targetLanguage: string;
   outputLanguage?: string;
@@ -64,6 +68,9 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
 export const DEFAULT_SETTINGS: UserSettings = {
   apiKey: '',
   provider: 'gemini',
+  modelId: '',
+  apiKeys: {},
+  modelIds: {},
   sourceLanguage: 'auto',
   targetLanguage: 'Vietnamese',
   outputLanguage: 'Vietnamese',
@@ -173,9 +180,29 @@ export const storage = {
       const saved: Partial<UserSettings> = data?.settings || {};
       const lang = (saved.appLanguage as LanguageCode) || 'vi';
       const outputLanguage = saved.outputLanguage || getDefaultOutputLanguage(lang);
+      const activeProvider: AIProvider = saved.provider || 'gemini';
+      const apiKeys: Partial<Record<AIProvider, string>> = { ...(saved.apiKeys || {}) };
+      const modelIds: Partial<Record<AIProvider, string>> = { ...(saved.modelIds || {}) };
+
+      // Backwards compatibility with previous single apiKey / modelId
+      if (saved.apiKey && !apiKeys[activeProvider]) {
+        apiKeys[activeProvider] = saved.apiKey;
+      }
+      if (saved.modelId && !modelIds[activeProvider]) {
+        modelIds[activeProvider] = saved.modelId;
+      }
+
+      const activeApiKey = apiKeys[activeProvider] ?? saved.apiKey ?? '';
+      const activeModelId = modelIds[activeProvider] ?? saved.modelId ?? '';
+
       return {
         ...DEFAULT_SETTINGS,
         ...saved,
+        provider: activeProvider,
+        apiKey: activeApiKey,
+        modelId: activeModelId,
+        apiKeys,
+        modelIds,
         outputLanguage,
         actions: sanitizeActions(saved.actions, lang),
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
@@ -191,9 +218,35 @@ export const storage = {
     const newOutputLang = settings.outputLanguage !== undefined
       ? settings.outputLanguage
       : (currentSettings.outputLanguage || getDefaultOutputLanguage(newLang));
-    const newSettings = { 
+
+    const activeProvider = (settings.provider || currentSettings.provider || 'gemini') as AIProvider;
+    const newApiKeys: Partial<Record<AIProvider, string>> = {
+      ...(currentSettings.apiKeys || {}),
+      ...(settings.apiKeys || {}),
+    };
+    const newModelIds: Partial<Record<AIProvider, string>> = {
+      ...(currentSettings.modelIds || {}),
+      ...(settings.modelIds || {}),
+    };
+
+    if (settings.apiKey !== undefined) {
+      newApiKeys[activeProvider] = settings.apiKey;
+    }
+    if (settings.modelId !== undefined) {
+      newModelIds[activeProvider] = settings.modelId;
+    }
+
+    const activeApiKey = newApiKeys[activeProvider] ?? '';
+    const activeModelId = newModelIds[activeProvider] ?? '';
+
+    const newSettings: UserSettings = { 
       ...currentSettings, 
       ...settings,
+      provider: activeProvider,
+      apiKey: activeApiKey,
+      modelId: activeModelId,
+      apiKeys: newApiKeys,
+      modelIds: newModelIds,
       outputLanguage: newOutputLang,
       actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang),
       disabledWebsites: settings.disabledWebsites !== undefined
@@ -209,9 +262,25 @@ export const storage = {
         const val: Partial<UserSettings> = changes.settings.newValue || {};
         const lang = (val.appLanguage as LanguageCode) || 'vi';
         const outputLanguage = val.outputLanguage || getDefaultOutputLanguage(lang);
+        const activeProvider: AIProvider = val.provider || 'gemini';
+        const apiKeys: Partial<Record<AIProvider, string>> = { ...(val.apiKeys || {}) };
+        const modelIds: Partial<Record<AIProvider, string>> = { ...(val.modelIds || {}) };
+
+        if (val.apiKey && !apiKeys[activeProvider]) {
+          apiKeys[activeProvider] = val.apiKey;
+        }
+        if (val.modelId && !modelIds[activeProvider]) {
+          modelIds[activeProvider] = val.modelId;
+        }
+
         callback({
           ...DEFAULT_SETTINGS,
           ...val,
+          provider: activeProvider,
+          apiKey: apiKeys[activeProvider] ?? val.apiKey ?? '',
+          modelId: modelIds[activeProvider] ?? val.modelId ?? '',
+          apiKeys,
+          modelIds,
           outputLanguage,
           actions: sanitizeActions(val.actions, lang),
           disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
