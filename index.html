@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Lightning AI Assistant</title>
+  <meta name="description" content="Official Privacy Policy for Lightning AI Assistant Chrome Extension. Learn how Lightning protects your privacy through the Bring Your Own Key (BYOK) architecture and zero data collection.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    :root {
+      --bg-dark: #070c1e;
+      --bg-card: #0d152d;
+      --bg-card-alt: #131d3b;
+      --border-color: #1e293b;
+      --border-focus: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-body: #cbd5e1;
+      --cyan: #00f0ff;
+      --cyan-soft: #38bdf8;
+      --violet: #c084fc;
+      --pink: #f472b6;
+      --code-bg: #090e23;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #111e47 0%, #070c1e 65%);
+      color: var(--text-body);
+      line-height: 1.7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a {
+      color: var(--cyan-soft);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--cyan);
+      text-decoration: underline;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(7, 12, 30, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand img {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+    }
+
+    .header-links {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .btn-github {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--cyan-soft);
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-github:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--cyan);
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    main {
+      flex: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+      width: 100%;
+    }
+
+    .hero-section {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .badge-capsule {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      color: var(--cyan);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.3rem 0.85rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.025em;
+    }
+
+    .hero-meta {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.5rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+
+    .feature-icon {
+      font-size: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1.1rem;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .content-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h2:first-of-type {
+      margin-top: 0;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    p {
+      margin-bottom: 1.2rem;
+    }
+
+    ul, ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1.2rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    strong {
+      color: var(--text-main);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: var(--code-bg);
+      color: var(--cyan);
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    th {
+      background: var(--bg-card-alt);
+      color: var(--text-main);
+      padding: 0.9rem 1.2rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 0.9rem 1.2rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-body);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .callout {
+      background: rgba(56, 189, 248, 0.06);
+      border-left: 4px solid var(--cyan-soft);
+      padding: 1.25rem 1.5rem;
+      border-radius: 0 10px 10px 0;
+      margin: 1.5rem 0;
+    }
+
+    .callout p:last-child {
+      margin-bottom: 0;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      background: #040916;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    footer p {
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+      h1 {
+        font-size: 2rem;
+      }
+      .content-card {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="https://github.com/tuyennq1001/lightning" class="brand" target="_blank" rel="noopener noreferrer">
+        <img src="favicon.svg" alt="Lightning Logo">
+        <span>Lightning AI</span>
+      </a>
+      <div class="header-links">
+        <a href="https://github.com/tuyennq1001/lightning" class="btn-github" target="_blank" rel="noopener noreferrer">
+          <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+          </svg>
+          GitHub Repository
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-section">
+      <div class="badge-capsule">🛡️ Trust &amp; Privacy First</div>
+      <h1>Privacy Policy</h1>
+      <p class="hero-meta"><strong>Last updated:</strong> October 8, 2026 • Effective immediately</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔑</div>
+        <h3>100% BYOK Architecture</h3>
+        <p>Bring Your Own Key: You connect your personal API key directly from Google Gemini, OpenAI, or Anthropic Claude.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚫</div>
+        <h3>Zero Data Collection</h3>
+        <p>No telemetry, no tracking scripts, and no intermediate proxy servers. We never see, store, or sell your data.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Isolated Shadow DOM</h3>
+        <p>Your user interface and active prompts run within a secured Shadow DOM boundary, completely isolated from webpage scripts.</p>
+      </div>
+    </div>
+
+    <div class="content-card">
+      <p>
+        Lightning AI ("we", "our", or "the extension") is an all-in-one browser extension designed to enhance your web reading and writing experience with AI capabilities. We are fundamentally committed to protecting your privacy and ensuring complete transparency regarding how your data is handled.
+      </p>
+
+      <h2>1. Core Principle: Bring Your Own Key (BYOK) &amp; Zero Data Collection</h2>
+      <p>Lightning operates strictly on a <strong>Bring Your Own Key (BYOK)</strong> client-side architecture:</p>
+      <ul>
+        <li><strong>No Intermediary Servers:</strong> We do not own, operate, or route through any backend proxy server that processes, logs, or intercepts your prompts or data.</li>
+        <li><strong>Direct Client-to-API Communication:</strong> All AI requests are transmitted directly from your browser client to the official API endpoints of your chosen provider:
+          <ul>
+            <li>Google Gemini (<code>generativelanguage.googleapis.com</code>)</li>
+            <li>OpenAI (<code>api.openai.com</code>)</li>
+            <li>Anthropic Claude (<code>api.anthropic.com</code>)</li>
+            <li>OpenRouter (<code>openrouter.ai</code>)</li>
+          </ul>
+        </li>
+        <li><strong>No Analytics or Telemetry:</strong> We do not track your browsing habits, sell user data, or inject any tracking scripts, cookies, or analytics into your browser.</li>
+      </ul>
+
+      <div class="callout">
+        <p><strong>Summary:</strong> Lightning is completely serverless from our side. Your tokens, API keys, and prompts flow exclusively between your browser and the AI provider you explicitly configure.</p>
+      </div>
+
+      <h2>2. Information We Access and How It Is Used</h2>
+      
+      <h3>A. API Keys and Settings</h3>
+      <ul>
+        <li><strong>What is stored:</strong> Your chosen AI provider, API key, model selection, custom actions, and language preferences.</li>
+        <li><strong>Where it is stored:</strong> Exclusively inside your browser's local extension storage (<code>chrome.storage.local</code>).</li>
+        <li><strong>Access scope:</strong> Only the Lightning extension running in your browser has access to this data. It is never synced to external servers or accessible to third parties.</li>
+      </ul>
+
+      <h3>B. Selected Text and Webpage Content</h3>
+      <ul>
+        <li><strong>When it is accessed:</strong> Only when you explicitly perform an action (e.g., highlighting text and clicking an action on the Floating Toolbar, right-clicking for a Context Menu action, or clicking "Summarize this page").</li>
+        <li><strong>How it is used:</strong> The selected text or extracted article content is sent directly to your configured AI provider to fulfill your request (e.g., translation, explanation, grammar correction, or summarization).</li>
+        <li><strong>Retention:</strong> We do not log, retain, or store your text snippets. Once the AI response stream completes, the text is discarded from temporary memory.</li>
+      </ul>
+
+      <h2>3. Chrome Extension Permissions Justification</h2>
+      <p>In accordance with Google Chrome Web Store policies, here is why Lightning requests specific permissions:</p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%;">Permission</th>
+              <th>Justification &amp; Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>storage</code></td>
+              <td>Stores user configuration, preferred languages, and API keys locally in <code>chrome.storage.local</code>.</td>
+            </tr>
+            <tr>
+              <td><code>activeTab</code> &amp; <code>scripting</code></td>
+              <td>Extracts readable article content on demand when you explicitly click "Summarize this page" using Mozilla Readability.</td>
+            </tr>
+            <tr>
+              <td><code>sidePanel</code></td>
+              <td>Displays the persistent companion AI chat panel alongside your web browser tab.</td>
+            </tr>
+            <tr>
+              <td><code>contextMenus</code></td>
+              <td>Adds quick-access AI options (Translate, Explain, Summarize) to the browser right-click menu.</td>
+            </tr>
+            <tr>
+              <td><code>&lt;all_urls&gt;</code> (Host Permissions)</td>
+              <td>Enables the floating selection toolbar across websites you visit and permits direct network requests from the browser to the official AI provider APIs without intermediate servers.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>4. Third-Party Service Providers</h2>
+      <p>When you use Lightning, your interactions are processed by the AI provider you have configured. Each provider adheres to its own strict enterprise and privacy commitments:</p>
+      <ul>
+        <li><strong>Google Generative AI:</strong> Subject to <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a> and <a href="https://ai.google.dev/terms" target="_blank" rel="noopener noreferrer">Google Generative AI Terms of Service</a>.</li>
+        <li><strong>OpenAI:</strong> Subject to <a href="https://openai.com/privacy" target="_blank" rel="noopener noreferrer">OpenAI Privacy Policy</a> and <a href="https://openai.com/terms" target="_blank" rel="noopener noreferrer">OpenAI Terms of Use</a>.</li>
+        <li><strong>Anthropic:</strong> Subject to <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener noreferrer">Anthropic Privacy Policy</a>.</li>
+      </ul>
+      <p>We recommend reviewing the privacy policies of the respective AI providers you choose to connect.</p>
+
+      <h2>5. Security &amp; Isolation</h2>
+      <ul>
+        <li><strong>Shadow DOM Isolation:</strong> Lightning renders its floating toolbar and modal dialogs inside an isolated Shadow DOM (<code>mode: 'open'</code>) to guarantee that host webpage scripts cannot inspect or interfere with extension UI states or API key prompts.</li>
+        <li><strong>Secure Token Handling:</strong> API keys are never printed to console logs or exposed to host web pages. Direct browser access headers (such as Anthropic direct access headers) are strictly confined to API calls.</li>
+      </ul>
+
+      <h2>6. Children's Privacy</h2>
+      <p>Lightning does not knowingly collect or solicit any personal information from children under the age of 13.</p>
+
+      <h2>7. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time to reflect improvements or regulatory requirements. Any updates will be published with an updated "Last updated" date in this document and in the project repository.</p>
+
+      <h2>8. Contact &amp; Open Source</h2>
+      <p>If you have questions, feedback, or concerns regarding this Privacy Policy, please open an issue or reach out through our official repository:</p>
+      <p>
+        👉 <a href="https://github.com/tuyennq1001/lightning" target="_blank" rel="noopener noreferrer">https://github.com/tuyennq1001/lightning</a>
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 Lightning AI Assistant. All rights reserved.</p>
+    <p>Released under open-source license on <a href="https://github.com/tuyennq1001/lightning" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+  </footer>
+
+</body>
+</html>
