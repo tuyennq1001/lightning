@@ -20,6 +20,18 @@ const getPromptVariables = (t: ReturnType<typeof getT>) => [
   { label: '{page_url}', desc: t.varPageUrlDesc },
 ];
 
+const ChevronDownIcon = () => (
+  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z"
+        clipRule="evenodd"
+      />
+    </svg>
+  </div>
+);
+
 export default function Options() {
   const { settings, updateSettings, loading } = useSettings();
   
@@ -556,23 +568,33 @@ export default function Options() {
             </div>
 
             {/* App Interface Language Setting */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 mb-1">{t.appLangLabel}</h3>
-                <p className="text-xs text-slate-500 mb-3">
+                <p className="text-xs text-slate-500">
                   {t.appLangDesc}
                 </p>
-                <select
-                  className="w-full sm:w-80 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                  value={appLanguage}
-                  onChange={(e) => handleAppLanguageChange(e.target.value as LanguageCode)}
-                >
-                  {t.uiLanguages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
+              </div>
+
+              {/* Segmented Control */}
+              <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/60 shrink-0 self-start sm:self-auto">
+                {t.uiLanguages.map((lang) => {
+                  const isSelected = appLanguage === lang.code;
+                  return (
+                    <button
+                      key={lang.code}
+                      type="button"
+                      onClick={() => handleAppLanguageChange(lang.code as LanguageCode)}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                      }`}
+                    >
+                      <span>{lang.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -727,9 +749,9 @@ export default function Options() {
                 )}
               </div>
 
-              {/* Action List Section with Folder Tabs */}
-              <div className="space-y-0">
-                <div className="flex items-center justify-between mb-4">
+              {/* Action List Section with Segmented Control */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-base font-bold text-slate-900">{t.actionListTitle}</h3>
                     <p className="text-xs text-slate-500">{t.actionListDesc}</p>
@@ -742,65 +764,70 @@ export default function Options() {
                   </button>
                 </div>
 
-                {/* Folder Tabs Navigation */}
-                <div className="flex items-end gap-1.5 border-b border-slate-200 pt-2 px-1">
-                  <button
-                    type="button"
-                    onClick={() => setToolbarFilter('reading')}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
-                      toolbarFilter === 'reading'
-                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
-                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
-                    }`}
-                  >
-                    <span className="text-sm">📖</span>
-                    <span>{t.tabReading}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      toolbarFilter === 'reading' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
-                    }`}>
-                      {readingActionsCount}
-                    </span>
-                  </button>
+                {/* Main Action List Card */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                  {/* Segmented Control Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                    <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/60 shrink-0 self-start sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setToolbarFilter('reading')}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                          toolbarFilter === 'reading'
+                            ? 'bg-white text-blue-600 shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <span className="text-sm">📖</span>
+                        <span>{t.tabReading}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          toolbarFilter === 'reading' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          {readingActionsCount}
+                        </span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setToolbarFilter('writing')}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
-                      toolbarFilter === 'writing'
-                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
-                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
-                    }`}
-                  >
-                    <span className="text-sm">✍️</span>
-                    <span>{t.tabWriting}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      toolbarFilter === 'writing' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
-                    }`}>
-                      {writingActionsCount}
-                    </span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => setToolbarFilter('writing')}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                          toolbarFilter === 'writing'
+                            ? 'bg-white text-blue-600 shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <span className="text-sm">✍️</span>
+                        <span>{t.tabWriting}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          toolbarFilter === 'writing' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          {writingActionsCount}
+                        </span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setToolbarFilter('all')}
-                    className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-t-xl transition-all cursor-pointer relative -mb-px ${
-                      toolbarFilter === 'all'
-                        ? 'bg-white text-blue-600 border-t-2 border-t-blue-600 border-x border-slate-200 shadow-2xs z-10'
-                        : 'bg-slate-100/70 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-t border-x border-transparent'
-                    }`}
-                  >
-                    <span className="text-sm">📋</span>
-                    <span>{t.tabAll}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      toolbarFilter === 'all' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-500'
-                    }`}>
-                      {allActionsCount}
-                    </span>
-                  </button>
-                </div>
+                      <button
+                        type="button"
+                        onClick={() => setToolbarFilter('all')}
+                        className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                          toolbarFilter === 'all'
+                            ? 'bg-white text-blue-600 shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                        }`}
+                      >
+                        <span className="text-sm">📋</span>
+                        <span>{t.tabAll}</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          toolbarFilter === 'all' ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          {allActionsCount}
+                        </span>
+                      </button>
+                    </div>
 
-                {/* Folder Body Container */}
-                <div className="bg-white p-5 rounded-b-2xl border-x border-b border-slate-200 shadow-xs">
+                    <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                      {filteredActions.length} / {allActionsCount} {t.actionListTitle?.toLowerCase() || 'thao tác'}
+                    </span>
+                  </div>
                   {filteredActions.length === 0 ? (
                     <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                       <p className="text-sm text-slate-400 font-medium">{t.noActionsInScene}</p>
@@ -907,34 +934,40 @@ export default function Options() {
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                     {t.sourceLangLabel}
                   </label>
-                  <select
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    value={sourceLanguage}
-                    onChange={(e) => setSourceLanguage(e.target.value)}
-                  >
-                    {t.sourceLanguages.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={sourceLanguage}
+                      onChange={(e) => setSourceLanguage(e.target.value)}
+                    >
+                      {t.sourceLanguages.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                     {t.targetLangLabel}
                   </label>
-                  <select
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    value={targetLanguage === 'tiếng Việt' ? 'Vietnamese' : targetLanguage}
-                    onChange={(e) => setTargetLanguage(e.target.value)}
-                  >
-                    {t.targetLanguages.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={targetLanguage === 'tiếng Việt' ? 'Vietnamese' : targetLanguage}
+                      onChange={(e) => setTargetLanguage(e.target.value)}
+                    >
+                      {t.targetLanguages.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
                 </div>
               </div>
 
@@ -946,17 +979,20 @@ export default function Options() {
                 <p className="text-xs text-slate-500 mb-2.5">
                   {t.outputLangDesc}
                 </p>
-                <select
-                  className="w-full sm:w-80 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                  value={outputLanguage === 'tiếng Việt' ? 'Vietnamese' : outputLanguage}
-                  onChange={(e) => setOutputLanguage(e.target.value)}
-                >
-                  {(t.outputLanguages || t.targetLanguages).map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative w-full sm:w-80">
+                  <select
+                    className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                    value={outputLanguage === 'tiếng Việt' ? 'Vietnamese' : outputLanguage}
+                    onChange={(e) => setOutputLanguage(e.target.value)}
+                  >
+                    {(t.outputLanguages || t.targetLanguages).map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon />
+                </div>
               </div>
 
               <div className="pt-2">
@@ -984,15 +1020,18 @@ export default function Options() {
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   {t.providerLabel}
                 </label>
-                <select
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                  value={provider}
-                  onChange={(e) => handleProviderChange(e.target.value as UserSettings['provider'])}
-                >
-                  <option value="gemini">{t.providerGemini}</option>
-                  <option value="openai">{t.providerOpenAI}</option>
-                  <option value="claude">{t.providerClaude}</option>
-                </select>
+                <div className="relative">
+                  <select
+                    className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                    value={provider}
+                    onChange={(e) => handleProviderChange(e.target.value as UserSettings['provider'])}
+                  >
+                    <option value="gemini">{t.providerGemini}</option>
+                    <option value="openai">{t.providerOpenAI}</option>
+                    <option value="claude">{t.providerClaude}</option>
+                  </select>
+                  <ChevronDownIcon />
+                </div>
               </div>
 
               <div>
@@ -1002,7 +1041,7 @@ export default function Options() {
                 <input
                   type="password"
                   required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                   placeholder={`Dán API Key ${provider} tại đây...`}
                   value={localKey}
                   onChange={(e) => setLocalKey(e.target.value)}
@@ -1026,21 +1065,24 @@ export default function Options() {
                 </div>
 
                 {models.length > 0 ? (
-                  <select
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    value={modelId}
-                    onChange={(e) => setModelId(e.target.value)}
-                  >
-                    {models.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.id})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={modelId}
+                      onChange={(e) => setModelId(e.target.value)}
+                    >
+                      {models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.id})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
                 ) : (
                   <input
                     type="text"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                     placeholder="Nhập tên model hoặc tải danh sách..."
                     value={modelId}
                     onChange={(e) => setModelId(e.target.value)}
