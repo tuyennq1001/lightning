@@ -196,7 +196,7 @@ export default function Options() {
     try {
       let loadedModels: { id: string; name: string }[] = [];
       if (provider === 'gemini') {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${localKey}`);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(localKey.trim())}`);
         if (!res.ok) throw new Error('API Key không hợp lệ hoặc lỗi mạng');
         const data = await res.json();
         loadedModels = (data.models || [])
@@ -207,7 +207,7 @@ export default function Options() {
           }));
       } else if (provider === 'openai') {
         const res = await fetch('https://api.openai.com/v1/models', {
-          headers: { Authorization: `Bearer ${localKey}` }
+          headers: { Authorization: `Bearer ${localKey.trim()}` }
         });
         if (!res.ok) throw new Error('API Key không hợp lệ hoặc lỗi mạng');
         const data = await res.json();
@@ -268,7 +268,7 @@ export default function Options() {
     const outputLangToSave = newOutputLang !== undefined ? newOutputLang : outputLanguage;
     
     await updateSettings({ 
-      apiKey: localKey, 
+      apiKey: localKey.trim(), 
       provider, 
       modelId, 
       sourceLanguage, 
@@ -630,18 +630,21 @@ export default function Options() {
               </div>
 
               {/* Web Search Toggle Card */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-                <div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-base">🌐</span>
                     <h3 className="text-sm font-semibold text-slate-900">{t.enableWebSearch}</h3>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">{t.enableWebSearchDesc}</p>
+                  <p className="text-[11px] text-amber-800 bg-amber-50/90 px-3 py-1.5 rounded-xl border border-amber-200/70 inline-block font-normal mt-1.5 leading-relaxed">
+                    💡 {t.webSearchNote}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleToggleWebSearch}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-start sm:self-center ${
                     webSearchEnabled ? 'bg-blue-600' : 'bg-slate-300'
                   }`}
                 >

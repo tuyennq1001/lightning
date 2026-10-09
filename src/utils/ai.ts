@@ -20,18 +20,21 @@ export async function* streamAIResponse(
   const lang = (settings.appLanguage as LanguageCode) || 'vi';
   const t = getT(lang);
 
-  if (!settings.apiKey) {
+  const cleanApiKey = (settings.apiKey || '').trim();
+  if (!cleanApiKey) {
     yield t.errNoApiKey;
     return;
   }
 
+  const cleanSettings = { ...settings, apiKey: cleanApiKey };
+
   try {
-    if (settings.provider === 'openai') {
-      yield* streamOpenAI(messages, settings, options);
-    } else if (settings.provider === 'gemini') {
-      yield* streamGemini(messages, settings, options);
-    } else if (settings.provider === 'claude') {
-      yield* streamClaude(messages, settings, options);
+    if (cleanSettings.provider === 'openai') {
+      yield* streamOpenAI(messages, cleanSettings, options);
+    } else if (cleanSettings.provider === 'gemini') {
+      yield* streamGemini(messages, cleanSettings, options);
+    } else if (cleanSettings.provider === 'claude') {
+      yield* streamClaude(messages, cleanSettings, options);
     } else {
       yield t.errUnsupportedProvider;
     }
@@ -103,24 +106,58 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings, op
     };
   }
 
-  const shouldSearch = options?.webSearch ?? settings.webSearchEnabled ?? false;
-  if (shouldSearch) {
+  const lang = (settings.appLanguage as LanguageCode) || 'vi';
+  const t = getT(lang);
+
+  // Only enable Google Search grounding if explicitly requested via options
+  let isSearchActive = Boolean(options?.webSearch);
+  if (isSearchActive) {
     body.tools = [{ google_search: {} }];
   }
 
   const modelId = settings.modelId || 'gemini-1.5-flash';
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${settings.apiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    }
-  );
+  const apiKey = encodeURIComponent((settings.apiKey || '').trim());
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
-  if (!response.ok) {
+  let response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  // Graceful fallback: If search grounding fails (e.g. quota 429 or tool error 400), retry without tools
+  if (!response.ok && isSearchActive) {
+    const err = await response.json().catch(() => ({}));
+    const errMsg = err.error?.message || '';
+    if (
+      response.status === 429 ||
+      response.status === 400 ||
+      errMsg.toLowerCase().includes('quota') ||
+      errMsg.toLowerCase().includes('tool')
+    ) {
+      delete body.tools;
+      isSearchActive = false;
+      const fallbackResponse = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (fallbackResponse.ok) {
+        response = fallbackResponse;
+        yield t.webSearchFallbackNotice;
+      } else {
+        const fallbackErr = await fallbackResponse.json().catch(() => ({}));
+        throw new Error(fallbackErr.error?.message || errMsg || `HTTP ${fallbackResponse.status}`);
+      }
+    } else {
+      throw new Error(errMsg || `HTTP ${response.status}`);
+    }
+  } else if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.error?.message || `HTTP ${response.status}`);
   }
