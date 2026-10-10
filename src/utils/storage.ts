@@ -95,7 +95,7 @@ export interface UserSettings {
 export const DEFAULT_PAGE_ACTIONS: CustomAction[] = [
   {
     id: 'summarize-page',
-    label: 'Tóm tắt trang này',
+    label: 'Tóm tắt nội dung',
     icon: '📄',
     prompt: 'Tóm tắt ngắn gọn các luận điểm và nội dung chính của bài viết sau đây bằng {OUTPUT_LANG} theo định dạng gạch đầu dòng rõ ràng. Chỉ xuất ra kết quả tóm tắt, không thêm lời dẫn:\n\n"""\n{text}\n"""\n\n⚠️ YÊU CẦU BẮT BUỘC: Toàn bộ bản tóm tắt PHẢI được dịch và viết 100% bằng {OUTPUT_LANG}. Dù bài viết gốc là tiếng Nhật, tiếng Anh hay bất kỳ ngôn ngữ nào khác, TUYỆT ĐỐI KHÔNG dùng ngôn ngữ của bài viết gốc nếu khác {OUTPUT_LANG}.',
     scene: 'reading',
@@ -104,12 +104,21 @@ export const DEFAULT_PAGE_ACTIONS: CustomAction[] = [
   },
   {
     id: 'simplify-page',
-    label: 'Đơn giản hóa (ELI5)',
+    label: 'Giải thích ELI5',
     icon: '🧒',
     prompt: 'Hãy giải thích và trình bày lại toàn bộ nội dung của bài viết sau đây bằng {OUTPUT_LANG} theo cách cực kỳ đơn giản, trực quan, dễ hiểu cho người mới bắt đầu (phong cách đại chúng, bình dân).\n\nQuy tắc bắt buộc:\n- Dùng các ví dụ đời thường và hình ảnh ẩn dụ gần gũi để giải thích bản chất vấn đề.\n- Tránh dùng thuật ngữ chuyên môn phức tạp; nếu bắt buộc có thuật ngữ thì phải giải thích ngay bằng từ ngữ bình dân.\n- TUYỆT ĐỐI KHÔNG xưng hô kiểu người lớn với trẻ em (CẤM dùng các từ: "chú", "bác", "cháu", "con", "bạn nhỏ", "bé"). Giữ cách xưng hô trung tính, tôn trọng và văn minh.\n- TUYỆT ĐỐI KHÔNG thêm lời chào hỏi hay mào đầu xã giao (như "Chào bạn nhỏ...", "Chào bạn...", "Sau đây tôi xin..."). Đi thẳng ngay vào nội dung giải thích.\n\n"""\n{text}\n"""\n\n⚠️ YÊU CẦU BẮT BUỘC: Toàn bộ nội dung giải thích PHẢI được viết hoàn toàn bằng {OUTPUT_LANG}. Tuyệt đối không dùng ngôn ngữ của bài viết gốc nếu khác {OUTPUT_LANG}.',
     scene: 'reading',
     isDefault: true,
     shortcut: 'Alt+P',
+  },
+  {
+    id: 'summarize-link',
+    label: 'Tóm tắt URL',
+    icon: '🔗',
+    prompt: 'Tóm tắt ngắn gọn các luận điểm và nội dung chính của liên kết sau đây bằng {OUTPUT_LANG} theo định dạng gạch đầu dòng rõ ràng. Chỉ xuất ra kết quả tóm tắt, không thêm lời dẫn:\n\n"""\n{text}\n"""\n\n⚠️ YÊU CẦU BẮT BUỘC: Toàn bộ bản tóm tắt PHẢI được dịch và viết 100% bằng {OUTPUT_LANG}. Dù bài viết gốc là tiếng Nhật, tiếng Anh hay bất kỳ ngôn ngữ nào khác, TUYỆT ĐỐI KHÔNG dùng ngôn ngữ của bài viết gốc nếu khác {OUTPUT_LANG}.',
+    scene: 'reading',
+    isDefault: true,
+    shortcut: '',
   },
 ];
 
@@ -278,8 +287,8 @@ export function sanitizePageActions(actionsList?: CustomAction[], lang: Language
       prompt: getDefaultPrompt(a.id, lang) || a.prompt,
     }));
   }
-  // Filter out deprecated YouTube action or any invalid items
-  const validActions = actionsList.filter(a => a && a.id && a.id !== 'summarize-youtube');
+  // Filter out deprecated YouTube action, explain-link, or any invalid items
+  const validActions = actionsList.filter(a => a && a.id && a.id !== 'summarize-youtube' && a.id !== 'explain-link');
   const existingIds = new Set(validActions.map(a => a.id));
   const result: CustomAction[] = validActions.map((a) => {
     const isDef = DEFAULT_PAGE_ACTIONS.some(d => d.id === a.id);
@@ -339,7 +348,7 @@ export const storage = {
       const sanitizedPageActions = sanitizePageActions(saved.pageActions, lang);
 
       // Auto-cleanup stale/deprecated actions in storage if any were purged
-      if (Array.isArray(saved.pageActions) && saved.pageActions.some(a => a.id === 'summarize-youtube')) {
+      if (Array.isArray(saved.pageActions) && saved.pageActions.some(a => a.id === 'summarize-youtube' || a.id === 'explain-link')) {
         chrome.storage.local.set({
           settings: {
             ...saved,

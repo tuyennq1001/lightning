@@ -498,7 +498,8 @@ export default function Options() {
       action.id === 'explain' ? t.actionExplain :
       action.id === 'rewrite' ? t.actionRewrite :
       action.id === 'summarize-page' ? t.actionSummarizePage :
-      action.id === 'simplify-page' ? t.actionSimplifyPage : action.label
+      action.id === 'simplify-page' ? t.actionSimplifyPage :
+      action.id === 'summarize-link' ? t.actionSummarizeLink : action.label
     ) : action.label;
     setActionName(displayLabel);
     setActionIcon(action.icon);
@@ -1093,7 +1094,11 @@ export default function Options() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {pageActions.map((action) => {
                     const displayLabel = action.isDefault
-                      ? (action.id === 'summarize-page' ? t.actionSummarizePage : action.id === 'simplify-page' ? t.actionSimplifyPage : action.label)
+                      ? (
+                          action.id === 'summarize-page' ? t.actionSummarizePage :
+                          action.id === 'simplify-page' ? t.actionSimplifyPage :
+                          action.id === 'summarize-link' ? t.actionSummarizeLink : action.label
+                        )
                       : action.label;
                     const isEnabled = action.enabled !== false;
 
