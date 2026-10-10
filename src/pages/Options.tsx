@@ -6,6 +6,7 @@ import {
   type FontFamilyOption, 
   type FontSizeOption, 
   DEFAULT_ACTIONS, 
+  DEFAULT_PAGE_ACTIONS,
   normalizeDomain, 
   getDefaultOutputLanguage,
   getFontFamilyCss,
@@ -13,12 +14,20 @@ import {
 } from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
 
-type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help' | 'about';
+type SectionId = 'general' | 'translation' | 'page-actions' | 'toolbar' | 'provider' | 'help' | 'about';
 
 const PRESET_ICONS = [
-  '✍️', '🌐', '📝', '💡', '✨', '🔍', '📊', '🛠️', 
-  '🎯', '⚡', '📖', '🚀', '💬', '🤖', '🎨', '📌', 
-  '🏷️', '📋', '✏️', '🧠', '💼', '🔥', '📚', '🧩'
+  // Reading & Learning
+  '📄', '📖', '📚', '📑', '📰', '🎓', '📜', '🔖', '💡', '🧠',
+  // Writing & Editing
+  '✍️', '📝', '✏️', '✒️', '📋', '💬', '🗨️', '🖋️', '📌', '🏷️',
+  // AI, Tech & Code
+  '🤖', '⚡', '💻', '⚙️', '🛠️', '🔬', '🧪', '🔑', '🛡️', '🔨',
+  // Search & Data Analysis
+  '🔍', '🔎', '📊', '📈', '📉', '🎯', '🧭', '🌐', '📡', '📍',
+  // Creativity & Productivity
+  '✨', '🎨', '🚀', '🔥', '🌟', '🎭', '🧩', '💼', '📁', '⭐',
+  '💎', '🔔', '✅', '☕', '🪄', '🔮'
 ];
 
 const getPromptVariables = (t: ReturnType<typeof getT>) => [
@@ -70,8 +79,10 @@ export default function Options() {
   const [fontFamily, setFontFamily] = useState<FontFamilyOption>('system');
   const [fontSize, setFontSize] = useState<FontSizeOption>('14px');
   const [showToolbar, setShowToolbar] = useState(true);
+  const [quickAskEnabled, setQuickAskEnabled] = useState(true);
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [actions, setActions] = useState<CustomAction[]>([]);
+  const [pageActions, setPageActions] = useState<CustomAction[]>([]);
   const [disabledWebsites, setDisabledWebsites] = useState<string[]>([]);
   const [newDomainInput, setNewDomainInput] = useState('');
   const [searchDomainQuery, setSearchDomainQuery] = useState('');
@@ -87,6 +98,7 @@ export default function Options() {
   // Modal State (Add or Edit)
   const [showModal, setShowModal] = useState(false);
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
+  const [isEditingPageAction, setIsEditingPageAction] = useState(false);
   const [actionName, setActionName] = useState('');
   const [actionIcon, setActionIcon] = useState('✨');
   const [actionPrompt, setActionPrompt] = useState('');
@@ -105,14 +117,27 @@ export default function Options() {
 
   const conflictingAction = useMemo(() => {
     if (!actionShortcut.trim()) return null;
-    return actions.find(
+    const allActions = [...actions, ...pageActions];
+    return allActions.find(
       (a) => a.id !== editingActionId && a.shortcut?.toLowerCase() === actionShortcut.trim().toLowerCase()
     );
-  }, [actions, actionShortcut, editingActionId]);
+  }, [actions, pageActions, actionShortcut, editingActionId]);
 
   useEffect(() => {
     document.title = 'Lightning Options';
   }, []);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
 
   useEffect(() => {
     if (settings) {
@@ -131,8 +156,10 @@ export default function Options() {
       setFontFamily(settings.fontFamily || 'system');
       setFontSize(settings.fontSize || '14px');
       setShowToolbar(settings.showToolbar !== false);
+      setQuickAskEnabled(settings.quickAskEnabled !== false);
       setWebSearchEnabled(settings.webSearchEnabled !== false);
       setActions(settings.actions && settings.actions.length > 0 ? settings.actions : DEFAULT_ACTIONS);
+      setPageActions(settings.pageActions && settings.pageActions.length > 0 ? settings.pageActions : DEFAULT_PAGE_ACTIONS);
       setDisabledWebsites(settings.disabledWebsites || []);
     }
   }, [settings]);
@@ -168,7 +195,7 @@ export default function Options() {
     const container = (e?.currentTarget as HTMLElement) || mainContainerRef.current;
     if (!container) return;
 
-    const sections: SectionId[] = ['general', 'toolbar', 'translation', 'provider', 'help', 'about'];
+    const sections: SectionId[] = ['general', 'translation', 'page-actions', 'toolbar', 'provider', 'help', 'about'];
     const containerTop = container.getBoundingClientRect().top;
     const containerHeight = container.clientHeight;
     const scrollHeight = container.scrollHeight;
@@ -329,10 +356,14 @@ export default function Options() {
     newDisabledWebsites?: string[],
     newOutputLang?: string,
     newFontFamily?: FontFamilyOption,
-    newFontSize?: FontSizeOption
+    newFontSize?: FontSizeOption,
+    newPageActions?: CustomAction[],
+    newQuickAsk?: boolean
   ) => {
     const actionsToSave = newActions || actions;
+    const pageActionsToSave = newPageActions || pageActions;
     const toolbarToSave = newShowToolbar !== undefined ? newShowToolbar : showToolbar;
+    const quickAskToSave = newQuickAsk !== undefined ? newQuickAsk : quickAskEnabled;
     const appLangToSave = newAppLang || appLanguage;
     const webSearchToSave = newWebSearch !== undefined ? newWebSearch : webSearchEnabled;
     const disabledWebsitesToSave = newDisabledWebsites !== undefined ? newDisabledWebsites : disabledWebsites;
@@ -356,7 +387,9 @@ export default function Options() {
       outputLanguage: outputLangToSave,
       appLanguage: appLangToSave,
       actions: actionsToSave,
+      pageActions: pageActionsToSave,
       showToolbar: toolbarToSave,
+      quickAskEnabled: quickAskToSave,
       webSearchEnabled: webSearchToSave,
       disabledWebsites: disabledWebsitesToSave,
       fontFamily: fontFamilyToSave,
@@ -406,6 +439,12 @@ export default function Options() {
     await handleSaveAll(actions, updated);
   };
 
+  const handleToggleQuickAsk = async () => {
+    const updated = !quickAskEnabled;
+    setQuickAskEnabled(updated);
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, pageActions, updated);
+  };
+
   const handleToggleWebSearch = async () => {
     const updated = !webSearchEnabled;
     setWebSearchEnabled(updated);
@@ -423,28 +462,43 @@ export default function Options() {
       }
       return a;
     });
+    const updatedPageActions = pageActions.map(a => {
+      if (a.isDefault) {
+        return {
+          ...a,
+          prompt: getDefaultPrompt(a.id, newLang) || a.prompt,
+        };
+      }
+      return a;
+    });
     setActions(updatedActions);
-    await handleSaveAll(updatedActions, showToolbar, newLang);
+    setPageActions(updatedPageActions);
+    await handleSaveAll(updatedActions, showToolbar, newLang, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, updatedPageActions);
   };
 
-  const openAddModal = () => {
+  const openAddModal = (isPageAction = false) => {
+    setIsEditingPageAction(isPageAction);
     setEditingActionId(null);
     setActionName('');
-    setActionIcon('✨');
+    setActionIcon(isPageAction ? '📄' : '✨');
     setActionPrompt('');
     setActionScene('reading');
-    setActionShortcut('');
+    setActionShortcut(isPageAction ? 'Alt+O' : '');
     setIsRecordingShortcut(false);
     setShowModal(true);
   };
 
-  const openEditModal = (action: CustomAction) => {
+  const openEditModal = (action: CustomAction, isPageAction = false) => {
+    if (action.isDefault) return; // Default actions cannot be edited
+    setIsEditingPageAction(isPageAction);
     setEditingActionId(action.id);
     const displayLabel = (action.isDefault) ? (
       action.id === 'translate' ? t.actionTranslate :
       action.id === 'summarize' ? t.actionSummarize :
       action.id === 'explain' ? t.actionExplain :
-      action.id === 'rewrite' ? t.actionRewrite : action.label
+      action.id === 'rewrite' ? t.actionRewrite :
+      action.id === 'summarize-page' ? t.actionSummarizePage :
+      action.id === 'simplify-page' ? t.actionSimplifyPage : action.label
     ) : action.label;
     setActionName(displayLabel);
     setActionIcon(action.icon);
@@ -502,38 +556,79 @@ export default function Options() {
   const handleSaveAction = async () => {
     if (!actionName.trim() || !actionPrompt.trim()) return;
     
-    let updatedActions: CustomAction[];
-    if (editingActionId) {
-      updatedActions = actions.map(a => {
-        if (a.id === editingActionId) {
-          return {
-            ...a,
-            label: actionName.trim(),
-            icon: actionIcon.trim() || '⚡',
-            prompt: actionPrompt.trim(),
-            scene: actionScene,
-            shortcut: actionShortcut.trim(),
-          };
-        }
-        return a;
-      });
-    } else {
-      const newAction: CustomAction = {
-        id: `custom-${Date.now()}`,
-        label: actionName.trim(),
-        icon: actionIcon.trim() || '⚡',
-        prompt: actionPrompt.trim(),
-        scene: actionScene,
-        shortcut: actionShortcut.trim(),
-        isPinned: false,
-        isDefault: false
-      };
-      updatedActions = [...actions, newAction];
-    }
+    if (isEditingPageAction) {
+      let updatedPageActions: CustomAction[];
+      if (editingActionId) {
+        updatedPageActions = pageActions.map(a => {
+          if (a.id === editingActionId) {
+            return {
+              ...a,
+              label: actionName.trim(),
+              icon: actionIcon.trim() || '📄',
+              prompt: actionPrompt.trim(),
+              scene: 'all',
+              shortcut: actionShortcut.trim(),
+            };
+          }
+          return a;
+        });
+      } else {
+        const newAction: CustomAction = {
+          id: `custom-page-${Date.now()}`,
+          label: actionName.trim(),
+          icon: actionIcon.trim() || '📄',
+          prompt: actionPrompt.trim(),
+          scene: 'all',
+          shortcut: actionShortcut.trim(),
+          isPinned: false,
+          isDefault: false
+        };
+        updatedPageActions = [...pageActions, newAction];
+      }
 
-    setActions(updatedActions);
-    setShowModal(false);
-    await handleSaveAll(updatedActions);
+      setPageActions(updatedPageActions);
+      setShowModal(false);
+      await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, updatedPageActions);
+    } else {
+      let updatedActions: CustomAction[];
+      if (editingActionId) {
+        updatedActions = actions.map(a => {
+          if (a.id === editingActionId) {
+            return {
+              ...a,
+              label: actionName.trim(),
+              icon: actionIcon.trim() || '⚡',
+              prompt: actionPrompt.trim(),
+              scene: actionScene,
+              shortcut: actionShortcut.trim(),
+            };
+          }
+          return a;
+        });
+      } else {
+        const newAction: CustomAction = {
+          id: `custom-${Date.now()}`,
+          label: actionName.trim(),
+          icon: actionIcon.trim() || '⚡',
+          prompt: actionPrompt.trim(),
+          scene: actionScene,
+          shortcut: actionShortcut.trim(),
+          isPinned: false,
+          isDefault: false
+        };
+        updatedActions = [...actions, newAction];
+      }
+
+      setActions(updatedActions);
+      setShowModal(false);
+      await handleSaveAll(updatedActions);
+    }
+  };
+
+  const removePageAction = async (id: string) => {
+    const updated = pageActions.filter(a => a.id !== id);
+    setPageActions(updated);
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, updated);
   };
 
   const removeAction = async (id: string) => {
@@ -551,6 +646,28 @@ export default function Options() {
     });
     setActions(updated);
     await handleSaveAll(updated);
+  };
+
+  const handleToggleActionEnabled = async (id: string, isPageAction: boolean) => {
+    if (isPageAction) {
+      const updated = pageActions.map(a => {
+        if (a.id === id) {
+          return { ...a, enabled: a.enabled === false ? true : false };
+        }
+        return a;
+      });
+      setPageActions(updated);
+      await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, updated, quickAskEnabled);
+    } else {
+      const updated = actions.map(a => {
+        if (a.id === id) {
+          return { ...a, enabled: a.enabled === false ? true : false };
+        }
+        return a;
+      });
+      setActions(updated);
+      await handleSaveAll(updated, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, fontSize, pageActions, quickAskEnabled);
+    }
   };
 
   const insertVariable = (varName: string) => {
@@ -620,19 +737,6 @@ export default function Options() {
           </button>
 
           <button
-            id="nav-item-toolbar"
-            onClick={() => scrollToSection('toolbar')}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-              activeSection === 'toolbar'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
-                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-            }`}
-          >
-            <span className="text-lg">✏️</span>
-            <span>{t.navToolbar}</span>
-          </button>
-
-          <button
             id="nav-item-translation"
             onClick={() => scrollToSection('translation')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -643,6 +747,32 @@ export default function Options() {
           >
             <span className="text-lg">🌐</span>
             <span>{t.navTranslation}</span>
+          </button>
+
+          <button
+            id="nav-item-page-actions"
+            onClick={() => scrollToSection('page-actions')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'page-actions'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lg">📄</span>
+            <span>{t.navPageActions}</span>
+          </button>
+
+          <button
+            id="nav-item-toolbar"
+            onClick={() => scrollToSection('toolbar')}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              activeSection === 'toolbar'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+          >
+            <span className="text-lg">✏️</span>
+            <span>{t.navToolbar}</span>
           </button>
 
           <button
@@ -839,7 +969,231 @@ export default function Options() {
 
           <hr className="border-slate-200/80 my-8" />
 
-          {/* SECTION 2: TEXT SELECTION TOOLBAR */}
+          {/* SECTION 2: TRANSLATION SETTINGS */}
+          <section id="section-translation" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.transTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t.transDesc}</p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    {t.sourceLangLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={sourceLanguage}
+                      onChange={(e) => setSourceLanguage(e.target.value)}
+                    >
+                      {t.sourceLanguages.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    {t.targetLangLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={targetLanguage === 'tiếng Việt' ? 'Vietnamese' : targetLanguage}
+                      onChange={(e) => setTargetLanguage(e.target.value)}
+                    >
+                      {t.targetLanguages.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Output Language Field */}
+              <div className="pt-4 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  {t.outputLangLabel}
+                </label>
+                <p className="text-xs text-slate-500 mb-2.5">
+                  {t.outputLangDesc}
+                </p>
+                <div className="relative w-full sm:w-80">
+                  <select
+                    className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                    value={outputLanguage === 'tiếng Việt' ? 'Vietnamese' : outputLanguage}
+                    onChange={(e) => setOutputLanguage(e.target.value)}
+                  >
+                    {(t.outputLanguages || t.targetLanguages).map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDownIcon />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage)}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+                >
+                  {t.saveTransBtn}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 3: PAGE ACTIONS */}
+          <section id="section-page-actions" className="scroll-mt-8 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.pageActionsTitle}</h2>
+              <p className="text-sm text-slate-500 mt-1">{t.pageActionsDesc}</p>
+            </div>
+
+            {/* Quick Trigger Note Banner */}
+            <div className="bg-blue-50/80 border border-blue-200/70 p-4 rounded-2xl flex items-start gap-3">
+              <span className="text-xl shrink-0">💡</span>
+              <div className="text-xs text-blue-900 leading-relaxed">
+                <p className="font-semibold">{t.pageActionTriggerNote}</p>
+                <p className="text-blue-700 mt-0.5">{t.pageActionCardDesc}</p>
+              </div>
+            </div>
+
+            {/* Page Actions List Card */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">{t.pageActionsTitle}</h3>
+                  <p className="text-xs text-slate-500">{t.pageActionsDesc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openAddModal(true)}
+                  className="px-3.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm shadow-blue-200 cursor-pointer shrink-0"
+                >
+                  <span>+</span> {t.addNewAction}
+                </button>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {pageActions.map((action) => {
+                    const displayLabel = action.isDefault
+                      ? (action.id === 'summarize-page' ? t.actionSummarizePage : action.id === 'simplify-page' ? t.actionSimplifyPage : action.label)
+                      : action.label;
+                    const isEnabled = action.enabled !== false;
+
+                    return (
+                      <div
+                        key={action.id}
+                        className={`p-4 rounded-xl border transition group flex flex-col justify-between ${
+                          isEnabled 
+                            ? 'bg-white border-slate-200 shadow-xs hover:border-blue-300' 
+                            : 'bg-slate-50/80 border-dashed border-slate-200 opacity-60'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{action.icon}</span>
+                              <span className="font-bold text-sm text-slate-800">{displayLabel}</span>
+                            </div>
+
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                              {t.navPageActions}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed font-mono">
+                            {action.isDefault ? (getDefaultPrompt(action.id, appLanguage) || action.prompt) : action.prompt}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              isEnabled ? 'bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500'
+                            }`}>
+                              {action.isDefault ? t.defaultBadge : t.customBadge}
+                            </span>
+                            {action.shortcut ? (
+                              <kbd className={`px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded border ${
+                                isEnabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-400 border-slate-200'
+                              }`}>
+                                {action.shortcut}
+                              </kbd>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 italic">
+                                {t.noShortcut}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {action.isDefault ? (
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-semibold ${isEnabled ? 'text-blue-600' : 'text-slate-400'}`}>
+                                  {isEnabled ? t.actionStatusEnabled : t.actionStatusDisabled}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleActionEnabled(action.id, true)}
+                                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                    isEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                                  }`}
+                                  title={isEnabled ? t.actionEnabledTooltip : t.actionDisabledTooltip}
+                                >
+                                  <span
+                                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                      isEnabled ? 'translate-x-4' : 'translate-x-0'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(action, true)}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
+                                >
+                                  {t.editAction}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removePageAction(action.id)}
+                                  className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
+                                >
+                                  {t.deleteAction}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <hr className="border-slate-200/80 my-8" />
+
+          {/* SECTION 4: TEXT SELECTION TOOLBAR */}
           <section id="section-toolbar" className="scroll-mt-8 space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.toolbarTitle}</h2>
@@ -862,33 +1216,6 @@ export default function Options() {
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
                       showToolbar ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Web Search Toggle Card */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🌐</span>
-                    <h3 className="text-sm font-semibold text-slate-900">{t.enableWebSearch}</h3>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{t.enableWebSearchDesc}</p>
-                  <p className="text-[11px] text-amber-800 bg-amber-50/90 px-3 py-1.5 rounded-xl border border-amber-200/70 inline-block font-normal mt-1.5 leading-relaxed">
-                    💡 {t.webSearchNote}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleToggleWebSearch}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-start sm:self-center ${
-                    webSearchEnabled ? 'bg-blue-600' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                      webSearchEnabled ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -990,6 +1317,64 @@ export default function Options() {
                 )}
               </div>
 
+              {/* Quick Ask Toggle Card with Nested Web Search Sub-setting */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">⚡</span>
+                      <h3 className="text-sm font-semibold text-slate-900">{t.enableQuickAsk}</h3>
+                    </div>
+                    <p className="text-xs text-slate-500">{t.enableQuickAskDesc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleQuickAsk}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      quickAskEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        quickAskEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Nested Web Search Sub-Setting */}
+                <div className={`pt-3 border-t border-slate-100 transition-opacity ${
+                  quickAskEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pl-3 sm:pl-4 border-l-2 border-blue-400">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">🌐</span>
+                        <h4 className="text-xs font-semibold text-slate-800">{t.enableWebSearch}</h4>
+                      </div>
+                      <p className="text-[11px] text-slate-500">{t.enableWebSearchDesc}</p>
+                      <p className="text-[10px] text-amber-800 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200/70 inline-block font-normal mt-1 leading-relaxed">
+                        💡 {t.webSearchNote}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!quickAskEnabled}
+                      onClick={handleToggleWebSearch}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none self-start sm:self-center ${
+                        webSearchEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          webSearchEnabled ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Action List Section with Segmented Control */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -998,7 +1383,8 @@ export default function Options() {
                     <p className="text-xs text-slate-500">{t.actionListDesc}</p>
                   </div>
                   <button
-                    onClick={openAddModal}
+                    type="button"
+                    onClick={() => openAddModal(false)}
                     className="px-3.5 py-2 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm shadow-blue-200 cursor-pointer shrink-0"
                   >
                     <span>+</span> {t.addNewAction}
@@ -1073,7 +1459,8 @@ export default function Options() {
                     <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                       <p className="text-sm text-slate-400 font-medium">{t.noActionsInScene}</p>
                       <button
-                        onClick={openAddModal}
+                        type="button"
+                        onClick={() => openAddModal(false)}
                         className="mt-3 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition cursor-pointer"
                       >
                         + {t.addNewAction}
@@ -1088,11 +1475,16 @@ export default function Options() {
                           action.id === 'explain' ? t.actionExplain :
                           action.id === 'rewrite' ? t.actionRewrite : action.label
                         ) : action.label;
+                        const isEnabled = action.enabled !== false;
 
                         return (
                           <div
                             key={action.id}
-                            className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between hover:border-blue-300 transition group"
+                            className={`p-4 rounded-xl border transition group flex flex-col justify-between ${
+                              isEnabled 
+                                ? 'bg-white border-slate-200 shadow-xs hover:border-blue-300' 
+                                : 'bg-slate-50/80 border-dashed border-slate-200 opacity-60'
+                            }`}
                           >
                             <div>
                               <div className="flex items-start justify-between">
@@ -1105,8 +1497,11 @@ export default function Options() {
                                   {/* Pin Toggle Button */}
                                   <button
                                     onClick={() => togglePinAction(action.id)}
+                                    disabled={!isEnabled}
                                     className={`p-1 rounded-md text-xs transition-colors cursor-pointer ${
-                                      action.isPinned
+                                      !isEnabled
+                                        ? 'text-slate-300 opacity-40 cursor-not-allowed'
+                                        : action.isPinned
                                         ? 'text-purple-600 bg-purple-50 hover:bg-purple-100'
                                         : 'text-slate-300 hover:text-slate-600 hover:bg-slate-100'
                                     }`}
@@ -1134,9 +1529,15 @@ export default function Options() {
 
                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
                               <div className="flex items-center gap-2">
-                                <span>{action.isDefault ? t.defaultBadge : t.customBadge}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  isEnabled ? 'bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500'
+                                }`}>
+                                  {action.isDefault ? t.defaultBadge : t.customBadge}
+                                </span>
                                 {action.shortcut ? (
-                                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded">
+                                  <kbd className={`px-1.5 py-0.5 text-[10px] font-mono font-semibold rounded border ${
+                                    isEnabled ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-100 text-slate-400 border-slate-200'
+                                  }`}>
                                     {action.shortcut}
                                   </kbd>
                                 ) : (
@@ -1146,19 +1547,41 @@ export default function Options() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => openEditModal(action)}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
-                                >
-                                  {t.editAction}
-                                </button>
-                                {!action.isDefault && (
-                                  <button
-                                    onClick={() => removeAction(action.id)}
-                                    className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
-                                  >
-                                    {t.deleteAction}
-                                  </button>
+                                {action.isDefault ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-semibold ${isEnabled ? 'text-blue-600' : 'text-slate-400'}`}>
+                                      {isEnabled ? t.actionStatusEnabled : t.actionStatusDisabled}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleActionEnabled(action.id, false)}
+                                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        isEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                                      }`}
+                                      title={isEnabled ? t.actionEnabledTooltip : t.actionDisabledTooltip}
+                                    >
+                                      <span
+                                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                          isEnabled ? 'translate-x-4' : 'translate-x-0'
+                                        }`}
+                                      />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => openEditModal(action)}
+                                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
+                                    >
+                                      {t.editAction}
+                                    </button>
+                                    <button
+                                      onClick={() => removeAction(action.id)}
+                                      className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
+                                    >
+                                      {t.deleteAction}
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1173,94 +1596,7 @@ export default function Options() {
 
           <hr className="border-slate-200/80 my-8" />
 
-          {/* SECTION 3: TRANSLATION SETTINGS */}
-          <section id="section-translation" className="scroll-mt-8 space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.transTitle}</h2>
-              <p className="text-sm text-slate-500 mt-1">{t.transDesc}</p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    {t.sourceLangLabel}
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
-                      value={sourceLanguage}
-                      onChange={(e) => setSourceLanguage(e.target.value)}
-                    >
-                      {t.sourceLanguages.map((lang) => (
-                        <option key={lang.code} value={lang.code}>
-                          {lang.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                    {t.targetLangLabel}
-                  </label>
-                  <div className="relative">
-                    <select
-                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
-                      value={targetLanguage === 'tiếng Việt' ? 'Vietnamese' : targetLanguage}
-                      onChange={(e) => setTargetLanguage(e.target.value)}
-                    >
-                      {t.targetLanguages.map((lang) => (
-                        <option key={lang.code} value={lang.code}>
-                          {lang.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDownIcon />
-                  </div>
-                </div>
-              </div>
-
-              {/* AI Output Language Field */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  {t.outputLangLabel}
-                </label>
-                <p className="text-xs text-slate-500 mb-2.5">
-                  {t.outputLangDesc}
-                </p>
-                <div className="relative w-full sm:w-80">
-                  <select
-                    className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
-                    value={outputLanguage === 'tiếng Việt' ? 'Vietnamese' : outputLanguage}
-                    onChange={(e) => setOutputLanguage(e.target.value)}
-                  >
-                    {(t.outputLanguages || t.targetLanguages).map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon />
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage)}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
-                >
-                  {t.saveTransBtn}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <hr className="border-slate-200/80 my-8" />
-
-          {/* SECTION 4: AI PROVIDER & KEY */}
+          {/* SECTION 5: AI PROVIDER & KEY */}
           <section id="section-provider" className="scroll-mt-8 space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.providerTitle}</h2>
@@ -1404,7 +1740,7 @@ export default function Options() {
 
           <hr className="border-slate-200/80 my-8" />
 
-          {/* SECTION 5: HELP & SHORTCUTS */}
+          {/* SECTION 6: HELP & SHORTCUTS */}
           <section id="section-help" className="scroll-mt-8 space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.helpTitle}</h2>
@@ -1449,7 +1785,7 @@ export default function Options() {
 
           <hr className="border-slate-200/80 my-8" />
 
-          {/* SECTION 6: ABOUT */}
+          {/* SECTION 7: ABOUT */}
           <section id="section-about" className="scroll-mt-8 space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.aboutTitle}</h2>
@@ -1515,15 +1851,21 @@ export default function Options() {
 
       {/* ADD / EDIT ACTION MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border-2 border-slate-900 overflow-hidden animate-fade-in-up">
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4"
+          onClick={() => setShowModal(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border-2 border-slate-900 overflow-hidden animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-base font-bold text-slate-900">
                 {editingActionId ? t.modalEditTitle : t.modalAddTitle}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               >
                 ✕
               </button>
@@ -1559,7 +1901,7 @@ export default function Options() {
                 <label className="block text-xs font-bold text-slate-500 mb-1">
                   {t.selectIcon}
                 </label>
-                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200/60 max-h-24 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200/60 max-h-36 overflow-y-auto">
                   {PRESET_ICONS.map((icon) => (
                     <button
                       key={icon}
@@ -1615,44 +1957,50 @@ export default function Options() {
                 </div>
               </div>
 
-              {/* Conditions / Scenes */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-                  {t.useConditions}
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scene"
-                      checked={actionScene === 'reading'}
-                      onChange={() => setActionScene('reading')}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>{t.conditionReading}</span>
+              {/* Conditions / Scenes (Only for Selection Toolbar Actions) */}
+              {!isEditingPageAction ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    {t.useConditions}
                   </label>
-                  <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scene"
-                      checked={actionScene === 'writing'}
-                      onChange={() => setActionScene('writing')}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>{t.conditionWriting}</span>
-                  </label>
-                  <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="scene"
-                      checked={actionScene === 'all'}
-                      onChange={() => setActionScene('all')}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>{t.conditionAll}</span>
-                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scene"
+                        checked={actionScene === 'reading'}
+                        onChange={() => setActionScene('reading')}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{t.conditionReading}</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scene"
+                        checked={actionScene === 'writing'}
+                        onChange={() => setActionScene('writing')}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{t.conditionWriting}</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="scene"
+                        checked={actionScene === 'all'}
+                        onChange={() => setActionScene('all')}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>{t.conditionAll}</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-xs text-blue-800 leading-relaxed">
+                  📄 {t.pageActionCardDesc}
+                </div>
+              )}
 
               {/* Shortcut Key Recorder */}
               <div>

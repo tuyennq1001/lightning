@@ -1,4 +1,4 @@
-import { storage, type UserSettings, DEFAULT_ACTIONS } from './utils/storage';
+import { storage, type UserSettings, DEFAULT_ACTIONS, DEFAULT_PAGE_ACTIONS } from './utils/storage';
 import { streamAIResponse, type ChatMessage } from './utils/ai';
 import { getT, type LanguageCode } from './utils/i18n';
 // Open options page directly when clicking the extension action icon
@@ -16,18 +16,41 @@ const updateContextMenus = (settings: UserSettings) => {
         // Suppress benign lastError during cleanup
       }
 
-      // Page context menu: summarize page
+      // Page context menu (Option A: Submenu under ⚡ Lightning AI)
+      const pageActions = (settings?.pageActions && settings.pageActions.length > 0)
+        ? settings.pageActions
+        : DEFAULT_PAGE_ACTIONS;
+
+      const pageParentId = 'lightning-page-parent';
       chrome.contextMenus.create({
-        id: 'summarize-page',
-        title: t.summarizePageTitle,
-        contexts: ['page']
+        id: pageParentId,
+        title: 'Lightning AI',
+        contexts: ['page'],
       }, () => {
         if (chrome.runtime.lastError) { /* ignore */ }
       });
 
+      pageActions.filter((pAction) => pAction.enabled !== false).forEach((pAction) => {
+        let label = pAction.label;
+        if (pAction.isDefault) {
+          if (pAction.id === 'summarize-page') label = t.actionSummarizePage;
+          else if (pAction.id === 'simplify-page') label = t.actionSimplifyPage;
+        }
+        const shortcutSuffix = pAction.shortcut ? ` (${pAction.shortcut})` : '';
+
+        chrome.contextMenus.create({
+          id: pAction.id,
+          parentId: pageParentId,
+          title: `${pAction.icon} ${label}${shortcutSuffix}`,
+          contexts: ['page'],
+        }, () => {
+          if (chrome.runtime.lastError) { /* ignore */ }
+        });
+      });
+
       // Actions from settings
       const actions = (settings?.actions && settings.actions.length > 0) ? settings.actions : DEFAULT_ACTIONS;
-      actions.forEach((action) => {
+      actions.filter((action) => action.enabled !== false).forEach((action) => {
         let contexts: any[] = ['selection'];
         if (action.scene === 'writing') {
           contexts = ['editable'];

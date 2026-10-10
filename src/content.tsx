@@ -7,6 +7,7 @@ import {
   type UserSettings, 
   type CustomAction, 
   DEFAULT_ACTIONS, 
+  DEFAULT_PAGE_ACTIONS,
   isDomainDisabled, 
   normalizeDomain,
   getFontFamilyCss,
@@ -57,6 +58,8 @@ function getLocalizedActionLabel(action: CustomAction, lang: LanguageCode) {
     if (action.id === 'summarize') return t.actionSummarize;
     if (action.id === 'explain') return t.actionExplain;
     if (action.id === 'rewrite') return t.actionRewrite;
+    if (action.id === 'summarize-page') return t.actionSummarizePage;
+    if (action.id === 'simplify-page') return t.actionSimplifyPage;
   }
   return action.label;
 }
@@ -94,6 +97,7 @@ function FloatingToolbar() {
   const [showModal, setShowModal] = useState(false);
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
   const [activeAction, setActiveAction] = useState<CustomAction | null>(null);
+  const [isPageAction, setIsPageAction] = useState(false);
   const [isQuickAskMode, setIsQuickAskMode] = useState(false);
   const [quickAskQuestion, setQuickAskQuestion] = useState('');
   const [webSearchActive, setWebSearchActive] = useState(true);
@@ -110,6 +114,47 @@ function FloatingToolbar() {
   useEffect(() => {
     settingsRef.current = settings;
   }, [settings]);
+
+  const activeActionRef = useRef<CustomAction | null>(null);
+  useEffect(() => {
+    activeActionRef.current = activeAction;
+  }, [activeAction]);
+
+  const extractedArticleRef = useRef<string>('');
+  const pageActionCacheRef = useRef<Record<string, string>>({});
+  const aiResponseRef = useRef<string>('');
+  useEffect(() => {
+    aiResponseRef.current = aiResponse;
+  }, [aiResponse]);
+
+  const showModalRef = useRef(false);
+  useEffect(() => {
+    showModalRef.current = showModal;
+  }, [showModal]);
+
+  const isPageActionRef = useRef(false);
+  useEffect(() => {
+    isPageActionRef.current = isPageAction;
+  }, [isPageAction]);
+
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; modalX: number; modalY: number } | null>(null);
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setIsPageAction(false);
+    setIsDragging(false);
+    dragStartRef.current = null;
+    document.body.style.userSelect = '';
+    pageActionCacheRef.current = {};
+    extractedArticleRef.current = '';
+  };
+
+  useEffect(() => {
+    return () => {
+      document.body.style.userSelect = '';
+    };
+  }, []);
 
   const currentLang = (settings?.appLanguage as LanguageCode) || 'vi';
   const t = getT(currentLang);
@@ -142,7 +187,7 @@ function FloatingToolbar() {
       const container = document.getElementById('lightning-ai-root');
       if (container && container.contains(e.target as Node)) return;
       // Clicked outside, hide current modal if any
-      setShowModal(false);
+      handleCloseModal();
       setShowMoreMenu(false);
       setShowCloseMenu(false);
       setPosition(null);
@@ -222,25 +267,171 @@ function FloatingToolbar() {
     return () => document.removeEventListener('mouseup', handleMouseUp);
   }, []);
 
+  const handleContextMenuActionRef = useRef<((menuId: string, text?: string) => void) | null>(null);
+
   useEffect(() => {
     const messageListener = (message: any) => {
       if (message.action === 'AI_CHUNK') {
-        setAiResponse((prev) => prev + message.chunk);
+        setAiResponse((prev) => {
+          const next = prev + message.chunk;
+          if (activeActionRef.current) {
+            pageActionCacheRef.current[activeActionRef.current.id] = next;
+          }
+          return next;
+        });
       } else if (message.action === 'AI_DONE') {
         setIsGenerating(false);
+        if (activeActionRef.current) {
+          pageActionCacheRef.current[activeActionRef.current.id] = aiResponseRef.current;
+        }
       } else if (message.action === 'AI_ERROR') {
         const curLang = (settingsRef.current?.appLanguage as LanguageCode) || 'vi';
         const curT = getT(curLang);
         setAiResponse((prev) => prev + `\n\n[${curT.errorPrefix}: ${message.error}]`);
         setIsGenerating(false);
       } else if (message.action === 'CONTEXT_MENU_CLICK') {
-        handleContextMenuAction(message.menuId, message.selectionText);
+        handleContextMenuActionRef.current?.(message.menuId, message.selectionText);
       }
     };
 
     chrome.runtime.onMessage.addListener(messageListener);
     return () => chrome.runtime.onMessage.removeListener(messageListener);
   }, []);
+
+  const startAI = (action: CustomAction, text: string, overrideTargetLang?: string) => {
+    setAiResponse('');
+    setIsGenerating(true);
+    if (activeActionRef.current) {
+      pageActionCacheRef.current[action.id] = '';
+    }
+    
+    const curSettings = settingsRef.current;
+    let prompt = action.prompt || '';
+    if (action.isDefault) {
+      prompt = getDefaultPrompt(action.id, currentLang) || prompt;
+    }
+
+    // Replace supported prompt variables
+    const rawTarget = overrideTargetLang || curSettings?.targetLanguage || 'Vietnamese';
+    const normalizedTarget = rawTarget === 'tiếng Việt' ? 'Vietnamese' : rawTarget;
+    const targetOption = t.targetLanguages.find((l) => l.code === normalizedTarget);
+    const targetLang = targetOption ? targetOption.label : normalizedTarget;
+
+    const rawOutput = curSettings?.outputLanguage || (currentLang === 'ja' ? 'Japanese' : currentLang === 'en' ? 'English' : 'Vietnamese');
+    const normalizedOutput = rawOutput === 'tiếng Việt' ? 'Vietnamese' : rawOutput;
+    const outputOption = t.outputLanguages?.find((l) => l.code === normalizedOutput) || t.targetLanguages.find((l) => l.code === normalizedOutput);
+    const outputLang = outputOption ? outputOption.label : normalizedOutput;
+
+    let outputLangString = stripFlagEmoji(outputLang);
+    if (normalizedOutput === 'Vietnamese') outputLangString = 'Tiếng Việt (Vietnamese)';
+    else if (normalizedOutput === 'Japanese') outputLangString = 'Japanese (日本語)';
+    else if (normalizedOutput === 'Chinese') outputLangString = 'Chinese (中文)';
+    else if (normalizedOutput === 'Korean') outputLangString = 'Korean (한국어)';
+    else if (normalizedOutput === 'English') outputLangString = 'English';
+
+    const rawSource = curSettings?.sourceLanguage || 'auto';
+    const sourceOption = t.sourceLanguages.find((l) => l.code === rawSource);
+    const sourceLang = sourceOption ? sourceOption.label : rawSource;
+    const pageTitle = document.title || '';
+    const pageUrl = window.location.href || '';
+
+    prompt = prompt.replace(/{TARGET_LANG}/g, stripFlagEmoji(targetLang));
+    prompt = prompt.replace(/{OUTPUT_LANG}/g, outputLangString);
+    prompt = prompt.replace(/{SOURCE_LANG}/g, stripFlagEmoji(sourceLang));
+    prompt = prompt.replace(/{page_title}/g, pageTitle);
+    prompt = prompt.replace(/{page_url}/g, pageUrl);
+
+    let finalPrompt = prompt;
+    if (finalPrompt.includes('{text}')) {
+      finalPrompt = finalPrompt.replace(/{text}/g, text);
+    } else {
+      finalPrompt = `${finalPrompt}\n\n"${text}"`;
+    }
+
+    chrome.runtime.sendMessage({
+      action: 'ASK_AI',
+      messages: [{ role: 'user', content: finalPrompt }],
+      webSearch: false,
+    });
+  };
+
+  const handleSwitchPageActionTab = (targetAction: CustomAction) => {
+    if (activeActionRef.current?.id === targetAction.id) return;
+
+    if (activeActionRef.current && aiResponseRef.current) {
+      pageActionCacheRef.current[activeActionRef.current.id] = aiResponseRef.current;
+    }
+
+    setActiveAction(targetAction);
+
+    const cached = pageActionCacheRef.current[targetAction.id];
+    if (cached) {
+      setAiResponse(cached);
+      setIsGenerating(false);
+    } else {
+      setAiResponse('');
+      startAI(targetAction, extractedArticleRef.current);
+    }
+  };
+
+  const triggerPageActionDirectly = (action: CustomAction) => {
+    // If modal is already open in page action mode, simply switch tab without resetting position or recreating modal
+    if (showModalRef.current && isPageActionRef.current) {
+      handleSwitchPageActionTab(action);
+      return;
+    }
+
+    const curSettings = settingsRef.current;
+    const curLang = (curSettings?.appLanguage as LanguageCode) || 'vi';
+    const curT = getT(curLang);
+
+    const posX = window.innerWidth / 2 + window.scrollX;
+    const posY = window.innerHeight / 3 + window.scrollY;
+
+    const clampedPos = {
+      x: Math.min(Math.max(225, posX), window.innerWidth + window.scrollX - 225),
+      y: posY,
+    };
+
+    let article = extractedArticleRef.current;
+    if (!article) {
+      try {
+        const documentClone = document.cloneNode(true) as Document;
+        const reader = new Readability(documentClone);
+        const articleObj = reader.parse();
+        const content = articleObj?.textContent || document.body.innerText;
+        article = (content || '').trim().substring(0, 15000);
+      } catch {
+        article = (document.body.innerText || '').trim().substring(0, 15000);
+      }
+      extractedArticleRef.current = article;
+    }
+
+    setIsPageAction(true);
+    setSelectedText(curT.fullPageContent);
+    setTargetElement(null);
+    setCurrentScene('reading');
+    setModalPosition(clampedPos);
+    setActiveAction(action);
+    setIsQuickAskMode(false);
+    setShowModal(true);
+    setPosition(null);
+    setShowMoreMenu(false);
+    setShowCloseMenu(false);
+
+    const cached = pageActionCacheRef.current[action.id];
+    if (cached) {
+      setAiResponse(cached);
+      setIsGenerating(false);
+    } else {
+      startAI(action, article);
+    }
+  };
+
+  const triggerPageActionRef = useRef<typeof triggerPageActionDirectly | null>(null);
+  useEffect(() => {
+    triggerPageActionRef.current = triggerPageActionDirectly;
+  });
 
   const handleContextMenuAction = (menuId: string, text?: string) => {
     const curSettings = settingsRef.current;
@@ -265,32 +456,19 @@ function FloatingToolbar() {
     setTargetElement(activeElTarget);
     setCurrentScene(isWriting ? 'writing' : 'reading');
 
-    if (menuId === 'summarize-page') {
-      try {
-        const documentClone = document.cloneNode(true) as Document;
-        const reader = new Readability(documentClone);
-        const article = reader.parse();
-        const content = article?.textContent || document.body.innerText;
-        const truncated = (content || '').trim().substring(0, 15000); 
-        
-        setSelectedText(t.fullPageContent);
-        const action: CustomAction = {
-          id: 'summarize-page', 
-          label: t.actionSummarize, 
-          icon: '📄', 
-          scene: 'reading',
-          prompt: getDefaultPrompt('summarize-page', currentLang) || ''
-        };
-        setActiveAction(action);
-        setShowModal(true);
-        startAI(action, truncated);
-      } catch (e: any) {
-        setAiResponse(`[${t.errReadPage}: ${e.message}]`);
-        setShowModal(true);
-      }
+    const pageActions = curSettings?.pageActions && curSettings.pageActions.length > 0
+      ? curSettings.pageActions
+      : DEFAULT_PAGE_ACTIONS;
+    const targetPageAction = pageActions.find(a => a.id === menuId);
+
+    if (targetPageAction) {
+      triggerPageActionDirectly(targetPageAction);
     } else {
       const action = actions.find(a => a.id === menuId);
       if (action) {
+        setIsPageAction(false);
+        pageActionCacheRef.current = {};
+        extractedArticleRef.current = '';
         setSelectedText(text || '');
         setActiveAction(action);
         setShowModal(true);
@@ -299,7 +477,14 @@ function FloatingToolbar() {
     }
   };
 
+  useEffect(() => {
+    handleContextMenuActionRef.current = handleContextMenuAction;
+  });
+
   const handleAction = (action: CustomAction) => {
+    setIsPageAction(false);
+    pageActionCacheRef.current = {};
+    extractedArticleRef.current = '';
     setModalPosition(position);
     setActiveAction(action);
     setIsQuickAskMode(false);
@@ -310,6 +495,9 @@ function FloatingToolbar() {
   };
 
   const handleOpenQuickAsk = () => {
+    setIsPageAction(false);
+    pageActionCacheRef.current = {};
+    extractedArticleRef.current = '';
     setModalPosition(position);
     setIsQuickAskMode(true);
     setActiveAction({
@@ -351,53 +539,6 @@ function FloatingToolbar() {
     });
   };
 
-  const startAI = (action: CustomAction, text: string, overrideTargetLang?: string) => {
-    setAiResponse('');
-    setIsGenerating(true);
-    
-    const curSettings = settingsRef.current;
-    let prompt = action.prompt || '';
-    if (action.isDefault) {
-      prompt = getDefaultPrompt(action.id, currentLang) || prompt;
-    }
-
-    // Replace supported prompt variables
-    const rawTarget = overrideTargetLang || curSettings?.targetLanguage || 'Vietnamese';
-    const normalizedTarget = rawTarget === 'tiếng Việt' ? 'Vietnamese' : rawTarget;
-    const targetOption = t.targetLanguages.find((l) => l.code === normalizedTarget);
-    const targetLang = targetOption ? targetOption.label : normalizedTarget;
-
-    const rawOutput = curSettings?.outputLanguage || (currentLang === 'ja' ? 'Japanese' : currentLang === 'en' ? 'English' : 'Vietnamese');
-    const normalizedOutput = rawOutput === 'tiếng Việt' ? 'Vietnamese' : rawOutput;
-    const outputOption = t.outputLanguages?.find((l) => l.code === normalizedOutput) || t.targetLanguages.find((l) => l.code === normalizedOutput);
-    const outputLang = outputOption ? outputOption.label : normalizedOutput;
-
-    const rawSource = curSettings?.sourceLanguage || 'auto';
-    const sourceOption = t.sourceLanguages.find((l) => l.code === rawSource);
-    const sourceLang = sourceOption ? sourceOption.label : rawSource;
-    const pageTitle = document.title || '';
-    const pageUrl = window.location.href || '';
-
-    prompt = prompt.replace(/{TARGET_LANG}/g, stripFlagEmoji(targetLang));
-    prompt = prompt.replace(/{OUTPUT_LANG}/g, stripFlagEmoji(outputLang));
-    prompt = prompt.replace(/{SOURCE_LANG}/g, stripFlagEmoji(sourceLang));
-    prompt = prompt.replace(/{page_title}/g, pageTitle);
-    prompt = prompt.replace(/{page_url}/g, pageUrl);
-
-    let finalPrompt = prompt;
-    if (finalPrompt.includes('{text}')) {
-      finalPrompt = finalPrompt.replace(/{text}/g, text);
-    } else {
-      finalPrompt = `${finalPrompt}\n\n"${text}"`;
-    }
-
-    chrome.runtime.sendMessage({
-      action: 'ASK_AI',
-      messages: [{ role: 'user', content: finalPrompt }],
-      webSearch: false,
-    });
-  };
-
   const triggerActionDirectly = (action: CustomAction, text: string, isWriting: boolean, activeEl: HTMLElement | null, rect: DOMRect | null) => {
     let posX = window.innerWidth / 2 + window.scrollX;
     let posY = window.innerHeight / 3 + window.scrollY;
@@ -412,6 +553,9 @@ function FloatingToolbar() {
       y: posY,
     };
 
+    setIsPageAction(false);
+    pageActionCacheRef.current = {};
+    extractedArticleRef.current = '';
     setSelectedText(text);
     setTargetElement(activeEl);
     setCurrentScene(isWriting ? 'writing' : 'reading');
@@ -433,16 +577,31 @@ function FloatingToolbar() {
   // Global keyboard shortcuts listener for actions
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is interacting inside our own shadow DOM / root
-      const container = document.getElementById('lightning-ai-root');
-      if (container && container.contains(e.target as Node)) return;
-
       const curSettings = settingsRef.current;
       if (!curSettings) return;
       if (curSettings.showToolbar === false) return;
       if (isDomainDisabled(window.location.hostname, curSettings.disabledWebsites)) return;
 
-      const actions = curSettings.actions && curSettings.actions.length > 0 ? curSettings.actions : DEFAULT_ACTIONS;
+      // 1. Check Page Actions first (can trigger WITHOUT text selection and works even when modal has focus)
+      const pageActions = (curSettings.pageActions && curSettings.pageActions.length > 0 
+        ? curSettings.pageActions 
+        : DEFAULT_PAGE_ACTIONS).filter(a => a.enabled !== false);
+      const matchingPageAction = pageActions.find(a => matchesShortcut(e, a.shortcut));
+      if (matchingPageAction) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerPageActionRef.current?.(matchingPageAction);
+        return;
+      }
+
+      // Ignore selection actions if user is interacting inside our own shadow DOM / root
+      const container = document.getElementById('lightning-ai-root');
+      if (container && container.contains(e.target as Node)) return;
+
+      // 2. Check Selection Actions (requires text selection)
+      const actions = (curSettings.actions && curSettings.actions.length > 0 
+        ? curSettings.actions 
+        : DEFAULT_ACTIONS).filter(a => a.enabled !== false);
       const matchingAction = actions.find(a => matchesShortcut(e, a.shortcut));
       if (!matchingAction) return;
 
@@ -560,8 +719,64 @@ function FloatingToolbar() {
     setShowModal(false);
   };
 
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
+    // If clicked on an interactive element (button, select, input, link, textarea), do not drag
+    const target = e.target as HTMLElement;
+    if (target.closest('button, select, input, a, textarea')) {
+      return;
+    }
+    if (!modalPosition) return;
+
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      modalX: modalPosition.x,
+      modalY: modalPosition.y,
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!dragStartRef.current) return;
+      moveEvent.preventDefault();
+
+      const dx = moveEvent.clientX - dragStartRef.current.mouseX;
+      const dy = moveEvent.clientY - dragStartRef.current.mouseY;
+
+      // Modal is 450px wide, centered horizontally via translateX(-50%)
+      const modalHalfWidth = 225;
+      const minX = window.scrollX + modalHalfWidth + 10;
+      const maxX = window.scrollX + window.innerWidth - modalHalfWidth - 10;
+      const clampedX = Math.min(Math.max(minX, dragStartRef.current.modalX + dx), Math.max(minX, maxX));
+
+      // Modal top is modalPosition.y + 36
+      // Keep header visible inside visible window
+      const minY = window.scrollY - 26;
+      const maxY = window.scrollY + window.innerHeight - 80;
+      const clampedY = Math.min(Math.max(minY, dragStartRef.current.modalY + dy), maxY);
+
+      setModalPosition({
+        x: clampedX,
+        y: clampedY,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      dragStartRef.current = null;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
   const actions = (settings?.actions && settings.actions.length > 0) ? settings.actions : DEFAULT_ACTIONS;
-  const visibleActions = actions.filter(a => a.scene === 'all' || a.scene === currentScene);
+  const enabledActions = actions.filter(a => a.enabled !== false);
+  const visibleActions = enabledActions.filter(a => a.scene === 'all' || a.scene === currentScene);
 
   // Pinned actions on main bar
   const pinnedActions = visibleActions.filter(a => a.isPinned);
@@ -685,21 +900,23 @@ function FloatingToolbar() {
           </div>
 
           {/* Quick Ask Fixed Button with App Icon */}
-          <div className="relative group flex items-center justify-center">
-            <button
-              onClick={handleOpenQuickAsk}
-              className="h-7 w-7 rounded-full flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer ml-0.5 hover:ring-2 hover:ring-blue-400"
-              aria-label="Quick Ask"
-            >
-              <img src={appIconUrl} alt="Lightning" className="w-6 h-6 rounded-full" />
-            </button>
+          {settings?.quickAskEnabled !== false && (
+            <div className="relative group flex items-center justify-center">
+              <button
+                onClick={handleOpenQuickAsk}
+                className="h-7 w-7 rounded-full flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer ml-0.5 hover:ring-2 hover:ring-blue-400"
+                aria-label="Quick Ask"
+              >
+                <img src={appIconUrl} alt="Lightning" className="w-6 h-6 rounded-full" />
+              </button>
 
-            {/* Tooltip */}
-            <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
-              {t.quickAsk}
-              <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+              {/* Tooltip */}
+              <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
+                {t.quickAsk}
+                <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Divider */}
           <div className="w-px h-4 bg-slate-300 mx-0.5"></div>
@@ -761,9 +978,9 @@ function FloatingToolbar() {
       {/* RESULT / QUICK ASK MODAL */}
       {showModal && modalPosition && activeAction && (
         <div 
-          className="absolute z-[2147483647] animate-fade-in-up"
+          className={`absolute z-[2147483647] ${isDragging ? '' : 'animate-fade-in-up'}`}
           style={{
-            left: `${Math.min(Math.max(220, modalPosition.x), window.innerWidth + window.scrollX - 220)}px`,
+            left: `${Math.min(Math.max(225, modalPosition.x), window.innerWidth + window.scrollX - 225)}px`,
             top: `${modalPosition.y + 36}px`,
             transform: 'translateX(-50%)',
             width: '450px',
@@ -774,13 +991,25 @@ function FloatingToolbar() {
             className="lightning-modal bg-white rounded-2xl w-full overflow-hidden flex flex-col max-h-[75vh]"
             style={{
               border: '2px solid #0f172a',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              boxShadow: isDragging 
+                ? '0 30px 60px -12px rgba(0, 0, 0, 0.45)' 
+                : '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
             }}
           >
             {/* Header */}
-            <div className="px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90">
+            <div 
+              onMouseDown={handleHeaderMouseDown}
+              className={`px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90 select-none ${
+                isDragging ? 'cursor-grabbing' : 'cursor-grab'
+              }`}
+              title={t.dragToMove}
+            >
               <div className="flex items-center gap-2">
-                <span className="text-base">{activeAction.icon}</span>
+                <span className="text-slate-300 hover:text-slate-500 text-xs shrink-0 select-none cursor-grab" title={t.dragToMove}>
+                  ⠿
+                </span>
+                <span className="text-base shrink-0">{activeAction.icon}</span>
 
                 {/* If Translation: Show Target Language Dropdown right in header! */}
                 {activeAction.id === 'translate' ? (
@@ -809,13 +1038,55 @@ function FloatingToolbar() {
               </div>
 
               <button 
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1 rounded-lg transition-colors cursor-pointer text-xs"
                 title={t.closeBtn}
               >
                 ✕
               </button>
             </div>
+
+            {/* Page Actions Switcher Tab Bar */}
+            {isPageAction && (
+              <div className="px-3.5 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center justify-between gap-2">
+                <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs gap-1 overflow-x-auto">
+                  {((settings?.pageActions && settings.pageActions.length > 0) ? settings.pageActions : DEFAULT_PAGE_ACTIONS)
+                    .filter(pa => pa.enabled !== false)
+                    .map((pa) => {
+                    const isSelected = activeAction.id === pa.id;
+                    const label = pa.isDefault
+                      ? (pa.id === 'summarize-page' ? t.tabSummarize : pa.id === 'simplify-page' ? t.tabSimplify : pa.label)
+                      : pa.label;
+                    return (
+                      <button
+                        key={pa.id}
+                        type="button"
+                        onClick={() => handleSwitchPageActionTab(pa)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? 'bg-blue-600 text-white shadow-xs font-bold'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="text-sm">{pa.icon}</span>
+                        <span>{label}</span>
+                        {pa.shortcut && (
+                          <kbd className={`px-1 py-0.2 text-[9px] font-mono rounded ${
+                            isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {pa.shortcut}
+                          </kbd>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <span className="text-[11px] text-slate-400 font-medium shrink-0 hidden sm:inline">
+                  {t.navPageActions}
+                </span>
+              </div>
+            )}
 
             {/* Quick Ask Input Bar (when in Quick Ask mode) */}
             {isQuickAskMode && (
@@ -948,7 +1219,14 @@ function FloatingToolbar() {
                 {!isQuickAskMode && (
                   <div className="relative group flex items-center justify-center">
                     <button 
-                      onClick={() => startAI(activeAction, selectedText)}
+                      onClick={() => {
+                        if (isPageAction) {
+                          pageActionCacheRef.current[activeAction.id] = '';
+                          startAI(activeAction, extractedArticleRef.current || selectedText);
+                        } else {
+                          startAI(activeAction, selectedText);
+                        }
+                      }}
                       disabled={isGenerating}
                       className="p-1.5 text-slate-700 hover:bg-slate-200/60 disabled:opacity-40 rounded-lg transition-colors cursor-pointer border border-slate-300 hover:border-slate-800"
                       aria-label={t.retryBtn}
