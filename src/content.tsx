@@ -2,7 +2,16 @@ import { StrictMode, useEffect, useState, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Readability } from '@mozilla/readability';
 import tailwindStyles from './index.css?inline';
-import { storage, type UserSettings, type CustomAction, DEFAULT_ACTIONS, isDomainDisabled, normalizeDomain } from './utils/storage';
+import { 
+  storage, 
+  type UserSettings, 
+  type CustomAction, 
+  DEFAULT_ACTIONS, 
+  isDomainDisabled, 
+  normalizeDomain,
+  getFontFamilyCss,
+  getFontSizeCss
+} from './utils/storage';
 import { getT, getDefaultPrompt, stripFlagEmoji, type LanguageCode } from './utils/i18n';
 import MarkdownRenderer from './components/MarkdownRenderer';
 
@@ -52,6 +61,31 @@ function getLocalizedActionLabel(action: CustomAction, lang: LanguageCode) {
   return action.label;
 }
 
+function matchesShortcut(e: KeyboardEvent, shortcutStr?: string): boolean {
+  if (!shortcutStr) return false;
+  const parts = shortcutStr.split('+').map(p => p.trim().toLowerCase());
+  const hasCtrl = parts.includes('ctrl');
+  const hasAlt = parts.includes('alt');
+  const hasShift = parts.includes('shift');
+  const hasMeta = parts.includes('command') || parts.includes('cmd') || parts.includes('meta');
+  
+  if (hasCtrl !== e.ctrlKey) return false;
+  if (hasAlt !== e.altKey) return false;
+  if (hasShift !== e.shiftKey) return false;
+  if (hasMeta !== e.metaKey) return false;
+
+  const nonModifiers = parts.filter(p => !['ctrl', 'alt', 'shift', 'command', 'cmd', 'meta'].includes(p));
+  if (nonModifiers.length !== 1) return false;
+
+  const targetKey = nonModifiers[0].toLowerCase();
+  const eventKey = e.key.toLowerCase();
+  const eventCode = e.code.toLowerCase();
+
+  if (eventKey === targetKey) return true;
+  if (eventCode === `key${targetKey}` || eventCode === `digit${targetKey}`) return true;
+  return false;
+}
+
 function FloatingToolbar() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -73,7 +107,9 @@ function FloatingToolbar() {
   const [currentScene, setCurrentScene] = useState<'reading' | 'writing'>('reading');
 
   const settingsRef = useRef<UserSettings | null>(null);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   const currentLang = (settings?.appLanguage as LanguageCode) || 'vi';
   const t = getT(currentLang);
@@ -362,6 +398,98 @@ function FloatingToolbar() {
     });
   };
 
+  const triggerActionDirectly = (action: CustomAction, text: string, isWriting: boolean, activeEl: HTMLElement | null, rect: DOMRect | null) => {
+    let posX = window.innerWidth / 2 + window.scrollX;
+    let posY = window.innerHeight / 3 + window.scrollY;
+
+    if (rect && rect.width > 0) {
+      posX = rect.left + rect.width / 2 + window.scrollX;
+      posY = rect.bottom + window.scrollY;
+    }
+
+    const clampedPos = {
+      x: Math.min(Math.max(220, posX), window.innerWidth + window.scrollX - 220),
+      y: posY,
+    };
+
+    setSelectedText(text);
+    setTargetElement(activeEl);
+    setCurrentScene(isWriting ? 'writing' : 'reading');
+    setModalPosition(clampedPos);
+    setActiveAction(action);
+    setIsQuickAskMode(false);
+    setShowModal(true);
+    setPosition(null);
+    setShowMoreMenu(false);
+    setShowCloseMenu(false);
+    startAI(action, text);
+  };
+
+  const triggerActionRef = useRef<typeof triggerActionDirectly | null>(null);
+  useEffect(() => {
+    triggerActionRef.current = triggerActionDirectly;
+  });
+
+  // Global keyboard shortcuts listener for actions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is interacting inside our own shadow DOM / root
+      const container = document.getElementById('lightning-ai-root');
+      if (container && container.contains(e.target as Node)) return;
+
+      const curSettings = settingsRef.current;
+      if (!curSettings) return;
+      if (curSettings.showToolbar === false) return;
+      if (isDomainDisabled(window.location.hostname, curSettings.disabledWebsites)) return;
+
+      const actions = curSettings.actions && curSettings.actions.length > 0 ? curSettings.actions : DEFAULT_ACTIONS;
+      const matchingAction = actions.find(a => matchesShortcut(e, a.shortcut));
+      if (!matchingAction) return;
+
+      let text = '';
+      let isWriting = false;
+      let activeElTarget: HTMLElement | null = null;
+      let targetRect: DOMRect | null = null;
+
+      const activeEl = document.activeElement as HTMLElement;
+
+      if (activeEl && (activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement)) {
+        const start = activeEl.selectionStart ?? 0;
+        const end = activeEl.selectionEnd ?? 0;
+        if (end > start) {
+          text = activeEl.value.substring(start, end).trim();
+          isWriting = true;
+          activeElTarget = activeEl;
+          targetRect = activeEl.getBoundingClientRect();
+        }
+      } else {
+        const selection = window.getSelection();
+        const selText = selection?.toString().trim();
+        if (selText && selection && selection.rangeCount > 0) {
+          text = selText;
+          if (activeEl && (activeEl.isContentEditable || activeEl.closest('[contenteditable="true"]'))) {
+            isWriting = true;
+            activeElTarget = activeEl;
+          }
+          try {
+            targetRect = selection.getRangeAt(0).getBoundingClientRect();
+          } catch {
+            targetRect = null;
+          }
+        }
+      }
+
+      if (text) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerActionRef.current?.(matchingAction, text, isWriting, activeElTarget, targetRect);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
+
   const handleTargetLanguageChange = async (newLang: string) => {
     if (!settings) return;
     const updated = { ...settings, targetLanguage: newLang };
@@ -467,8 +595,13 @@ function FloatingToolbar() {
                 </button>
 
                 {/* Text Bubble (Tooltip) on Hover */}
-                <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
-                  {action.id === 'translate' ? `${t.translateTo} ${getTargetLangLabel(settings?.targetLanguage)}` : localizedLabel}
+                <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
+                  <span>{action.id === 'translate' ? `${t.translateTo} ${getTargetLangLabel(settings?.targetLanguage)}` : localizedLabel}</span>
+                  {action.shortcut && (
+                    <kbd className="px-1 py-0.2 text-[9px] font-mono bg-slate-800 text-slate-300 border border-slate-700 rounded">
+                      {action.shortcut}
+                    </kbd>
+                  )}
                   <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
                 </div>
               </div>
@@ -516,12 +649,17 @@ function FloatingToolbar() {
                         onClick={() => handleAction(action)}
                         className="px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center justify-between group transition-colors cursor-pointer"
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                           <span className="text-slate-300 group-hover:text-slate-400 text-xs">⠿</span>
                           <span className="text-base shrink-0">{action.icon}</span>
-                          <span className="truncate max-w-[140px]">
+                          <span className="truncate max-w-[130px]">
                             {action.id === 'translate' ? `${t.translateTo} ${getTargetLangLabel(settings?.targetLanguage)}` : localizedLabel}
                           </span>
+                          {action.shortcut && (
+                            <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-slate-100 text-slate-600 border border-slate-200 rounded">
+                              {action.shortcut}
+                            </kbd>
+                          )}
                         </div>
 
                         {/* Pin Toggle Button */}
@@ -739,7 +877,13 @@ function FloatingToolbar() {
             )}
             
             {/* AI Response Area */}
-            <div className="p-4 overflow-y-auto flex-1 text-sm bg-white min-h-[90px]">
+            <div 
+              className="p-4 overflow-y-auto flex-1 bg-white min-h-[90px] leading-relaxed"
+              style={{
+                fontFamily: getFontFamilyCss(settings?.fontFamily),
+                fontSize: getFontSizeCss(settings?.fontSize),
+              }}
+            >
               {isGenerating && !aiResponse ? (
                 <div className="text-slate-400 text-xs italic flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>

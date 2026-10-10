@@ -44,7 +44,8 @@
 
 /* Markdown Styles for Lightning */
 .lightning-markdown {
-  font-size: 0.875rem;
+  font-family: inherit;
+  font-size: inherit;
   line-height: 1.625;
   color: #1e293b;
   word-break: break-word;
