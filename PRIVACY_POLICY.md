@@ -40,7 +40,6 @@ In accordance with Google Chrome Web Store policies, here is why Lightning reque
 | :--- | :--- |
 | `storage` | Stores user configuration, preferred languages, and API keys locally in `chrome.storage.local`. |
 | `activeTab` & `scripting` | Extracts article content on demand when you explicitly click "Summarize this page" using Mozilla Readability. |
-| `sidePanel` | Displays the companion AI chat panel alongside your web browser tab. |
 | `contextMenus` | Adds quick-access AI options (Translate, Explain, Summarize) to the right-click menu. |
 | `<all_urls>` (Host Permissions) | Enables the floating selection toolbar across websites you visit and permits direct network requests from the browser to the official AI provider APIs. |
 

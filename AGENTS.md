@@ -110,12 +110,10 @@ Dự án được phân định thành 4 môi trường thực thi biệt lập:
   - **Giới hạn Viewport & Tọa độ**: Tọa độ xuất hiện của toolbar/modal phải tính toán động theo điểm nhả chuột (`e.pageX`, `e.pageY`) và được kẹp (clamp) trong ranh giới hiển thị của màn hình (`window.innerWidth`, `window.innerHeight`), triệt tiêu hiện tượng tràn mép hoặc tạo thanh cuộn ngang ngoài ý muốn.
 - **Background Service Worker (`src/background.ts`)**:
   - Kiến trúc vô trạng thái (Stateless & Event-driven): Service worker có thể bị trình duyệt hủy tiến trình bất kỳ lúc nào để tiết kiệm tài nguyên.
-  - **Tuyệt đối không dùng `window`, `document`, hoặc lưu biến in-memory dài hạn**.
-  - Đảm nhiệm quản lý Menu chuột phải (`chrome.contextMenus`), hành vi thanh bên (`chrome.sidePanel`), và điều phối luồng stream AI proxy tới tab thông qua `chrome.tabs.sendMessage`.
-- **Side Panel (`src/pages/SidePanel.tsx`) & Options Page (`src/pages/Options.tsx`)**:
+  - Đảm nhiệm quản lý Menu chuột phải (`chrome.contextMenus`), mở trang Cài đặt khi bấm icon tiện ích (`chrome.action.onClicked`), và điều phối luồng stream AI proxy tới tab thông qua `chrome.tabs.sendMessage`.
+- **Options Page (`src/pages/Options.tsx`)**:
   - Chạy trong Extension Window Context hoàn toàn bảo mật và có đầy đủ quyền hạn `chrome.*`.
-  - Side Panel phục vụ luồng chat liên tục, tự động cuộn mượt khi sinh văn bản (`scrollToBottom`).
-  - Options Page mở toàn màn hình (`options.html`) quản lý cấu hình tập trung: API Keys, Provider, Model, Ngôn ngữ, và Thao tác nhanh (Custom Actions).
+  - Mở toàn màn hình (`options.html`) quản lý cấu hình tập trung: API Keys, Provider, Model, Ngôn ngữ, Giao diện và Thao tác nhanh (Custom Actions).
 - **Giao Tiếp Tin Nhắn An Toàn (Safe Message Passing)**:
   - Mọi thao tác gửi message (`chrome.tabs.sendMessage`, `chrome.runtime.sendMessage`) bắt buộc phải bọc callback xử lý hoặc dập tắt lỗi an toàn khi tab chưa nạp xong script (`chrome.runtime.lastError`).
 

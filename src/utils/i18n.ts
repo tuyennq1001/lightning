@@ -176,8 +176,6 @@ export const translations = {
     guideSelectionDesc: 'Bôi đen chữ bất kỳ trên trang web hoặc trong ô soạn thảo để hiển thị thanh công cụ AI ngay tại vị trí thả chuột.',
     guideContextTitle: 'Chuột phải',
     guideContextDesc: 'Chuột phải khi bôi đen để dịch/viết lại; hoặc chuột phải vào khoảng trống để "Tóm tắt toàn trang".',
-    guideSidebarTitle: 'Thanh bên',
-    guideSidebarDesc: 'Bấm vào biểu tượng Lightning trên thanh công cụ tiện ích để mở khung chat AI liên tục bên cạnh trang web.',
     guidePrivacyTitle: 'Bảo mật & Quyền riêng tư',
     guidePrivacyDesc: 'Mô hình Bring Your Own Key không dùng máy chủ trung gian. Toàn bộ yêu cầu đi trực tiếp từ máy của bạn tới API của Google/OpenAI/Anthropic.',
     // About Section
@@ -236,7 +234,6 @@ export const translations = {
         ? `Bạn là trợ lý AI thông minh Lightning có khả năng tìm kiếm Internet thời gian thực. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy tìm kiếm thông tin mới nhất trên Internet và trả lời câu hỏi/yêu cầu sau của người dùng bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời chính xác, cập nhật, trực diện, không thừa thãi và dẫn nguồn nếu có.`
         : `Bạn là trợ lý AI thông minh Lightning. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy trả lời câu hỏi/yêu cầu sau của người dùng liên quan đến đoạn văn bản trên bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời ngắn gọn, trực diện, chính xác và không thừa thãi.`,
     askBtn: 'Hỏi',
-    openInSidePanel: 'Tiếp tục trò chuyện trong Side Panel',
     translateTo: 'Dịch sang:',
     copyBtn: 'Sao chép',
     copiedBtn: 'Đã sao chép!',
@@ -253,18 +250,6 @@ export const translations = {
     summarizePageTitle: 'Tóm tắt trang này 📄',
     // Toast
     savedToast: 'Đã lưu cài đặt thành công!',
-    // Popup
-    popupSubtitle: 'Trợ lý AI toàn năng. Bôi đen văn bản trên bất kỳ trang web nào để sử dụng hoặc mở khung trò chuyện.',
-    popupOpenSidePanel: 'Mở thanh bên',
-    popupOpenOptions: 'Cài đặt & API Key',
-    popupVersion: 'Phiên bản 1.0.0',
-    // SidePanel
-    sidepanelNoKeyTitle: 'Chưa thiết lập API Key',
-    sidepanelNoKeyDesc: 'Bạn cần nhập API key để sử dụng trợ lý AI.',
-    sidepanelOpenSettings: 'Mở Cài đặt',
-    sidepanelStartChat: 'Hãy bắt đầu trò chuyện với AI!',
-    sidepanelInputPlaceholder: 'Nhập tin nhắn cho AI...',
-    sidepanelSend: 'Gửi',
     // Shared Statuses & Errors
     loading: 'Đang tải...',
     errorPrefix: 'Lỗi',
@@ -419,8 +404,6 @@ export const translations = {
     guideSelectionDesc: 'Select any text on a webpage or within an input box to display the AI toolbar at your cursor end.',
     guideContextTitle: 'Right-Click Context Menu',
     guideContextDesc: 'Right-click selected text to translate/rewrite, or right-click empty space to "Summarize this page".',
-    guideSidebarTitle: 'Side Panel',
-    guideSidebarDesc: 'Click the Lightning extension icon in the browser toolbar to open the continuous AI chat panel.',
     guidePrivacyTitle: 'Security & Privacy',
     guidePrivacyDesc: 'The Bring Your Own Key model bypasses third-party servers. All requests go directly to Google/OpenAI/Anthropic.',
     // About Section
@@ -479,7 +462,6 @@ export const translations = {
         ? `You are Lightning, an intelligent AI assistant with real-time web search capabilities. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease search for the latest information on the Internet and answer the user's question/request in ${outputLang || 'English'}:\n${question}\n\nBe accurate, up-to-date, direct, concise, and cite sources if available.`
         : `You are Lightning, an intelligent AI assistant. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease answer the user's question/request regarding the selected text in ${outputLang || 'English'}:\n${question}\n\nBe concise, direct, accurate, and avoid filler.`,
     askBtn: 'Ask',
-    openInSidePanel: 'Continue in Side Panel',
     translateTo: 'Translate to:',
     copyBtn: 'Copy',
     copiedBtn: 'Copied!',
@@ -496,18 +478,6 @@ export const translations = {
     summarizePageTitle: 'Summarize this page 📄',
     // Toast
     savedToast: 'Settings saved successfully!',
-    // Popup
-    popupSubtitle: 'All-in-One AI Assistant. Select text on any webpage to use or open chat.',
-    popupOpenSidePanel: 'Open Side Panel',
-    popupOpenOptions: 'Settings & API Key',
-    popupVersion: 'Version 1.0.0',
-    // SidePanel
-    sidepanelNoKeyTitle: 'API Key Not Configured',
-    sidepanelNoKeyDesc: 'Please enter your API Key in settings to start using Lightning AI.',
-    sidepanelOpenSettings: 'Open Settings',
-    sidepanelStartChat: 'Start chatting with AI!',
-    sidepanelInputPlaceholder: 'Type a message for AI...',
-    sidepanelSend: 'Send',
     // Shared Statuses & Errors
     loading: 'Loading...',
     errorPrefix: 'Error',
@@ -662,8 +632,6 @@ export const translations = {
     guideSelectionDesc: 'Webページや入力欄でテキストを選択すると、カーソルの位置にAIツールバーが表示されます。',
     guideContextTitle: '右クリックメニュー',
     guideContextDesc: 'テキスト選択時に右クリックして翻訳/リライト、または何もない場所を右クリックして「このページを要約」を実行できます。',
-    guideSidebarTitle: 'サイドパネル',
-    guideSidebarDesc: 'ツールバーのLightningアイコンをクリックすると、常駐チャットパネルが開きます。',
     guidePrivacyTitle: 'セキュリティ & プライバシー',
     guidePrivacyDesc: 'Bring Your Own Key方式により仲介サーバーを使用しません。リクエストはお使いの端末から各AIへ直接送信されます。',
     // About Section
@@ -722,7 +690,6 @@ export const translations = {
         ? `あなたはリアルタイムウェブ検索機能を備えた高機能AIアシスタントLightningです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nインターネットから最新情報を検索し、以下の質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n正確かつ最新の情報を簡潔に回答し、該当する場合は情報源を記載してください。`
         : `あなたは高機能AIアシスタントLightningです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nこのテキストに関するユーザーの質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n簡潔で的確、かつ正確に回答し、余計な前置きは省いてください。`,
     askBtn: '質問',
-    openInSidePanel: 'サイドパネルでチャットを続ける',
     translateTo: '翻訳先:',
     copyBtn: 'コピー',
     copiedBtn: 'コピー完了!',
@@ -739,18 +706,6 @@ export const translations = {
     summarizePageTitle: 'このページを要約 📄',
     // Toast
     savedToast: '設定を保存しました!',
-    // Popup
-    popupSubtitle: 'オールインワンAIアシスタント。Webページでテキストを選択するかサイドパネルを開いてください。',
-    popupOpenSidePanel: 'サイドパネルを開く',
-    popupOpenOptions: '設定 & APIキー',
-    popupVersion: 'バージョン 1.0.0',
-    // SidePanel
-    sidepanelNoKeyTitle: 'APIキーが未設定です',
-    sidepanelNoKeyDesc: 'Lightning AIを使用するには設定画面でAPIキーを入力してください。',
-    sidepanelOpenSettings: '設定を開く',
-    sidepanelStartChat: 'AIとのチャットを開始しましょう！',
-    sidepanelInputPlaceholder: 'AIにメッセージを送信...',
-    sidepanelSend: '送信',
     // Shared Statuses & Errors
     loading: '読み込み中...',
     errorPrefix: 'エラー',

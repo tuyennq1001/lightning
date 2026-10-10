@@ -1,10 +1,10 @@
 import { storage, type UserSettings, DEFAULT_ACTIONS } from './utils/storage';
 import { streamAIResponse, type ChatMessage } from './utils/ai';
 import { getT, type LanguageCode } from './utils/i18n';
-
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
-  .catch((error: Error) => console.error(error));
+// Open options page directly when clicking the extension action icon
+chrome.action.onClicked.addListener(() => {
+  chrome.runtime.openOptionsPage();
+});
 
 const updateContextMenus = (settings: UserSettings) => {
   try {

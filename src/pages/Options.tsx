@@ -1435,16 +1435,6 @@ export default function Options() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                <span className="text-2xl">💬</span>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{t.guideSidebarTitle}</h4>
-                  <p className="text-xs text-slate-500">
-                    {t.guideSidebarDesc}
-                  </p>
-                </div>
-              </div>
-
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🛡️</span>
                 <div>

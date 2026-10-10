@@ -47,19 +47,14 @@ Tài liệu này chứa toàn bộ nội dung đã được chuẩn hóa để b
      • Viết tiếp hoặc rút gọn đoạn văn với một cú nhấp chuột.
      • Tùy chỉnh danh sách hành động ghim theo thói quen đọc và viết.
 
-  2. 💬 THANH BÊN AI CHAT (SIDE PANEL):
-     • Trò chuyện liên tục với AI bên cạnh nội dung đang duyệt mà không cần chuyển tab.
-     • Giữ ngữ cảnh cuộc đối thoại, tự động cuộn mượt khi AI sinh văn bản.
-     • Hiển thị khối mã lập trình với cú pháp màu trực quan và nút sao chép nhanh.
-
-  3. 📄 TÓM TẮT TOÀN BỘ TRANG WEB (READABILITY):
+  2. 📄 TÓM TẮT TOÀN BỘ TRANG WEB (READABILITY):
      • Tích hợp Mozilla Readability giúp trích xuất nội dung cốt lõi của bài báo, tài liệu.
      • Sinh bản tóm tắt súc tích, làm nổi bật các ý chính trong vài giây.
 
-  4. 🖱️ MENU CHUỘT PHẢI (CONTEXT MENU):
+  3. 🖱️ MENU CHUỘT PHẢI (CONTEXT MENU):
      • Kích hoạt nhanh các tác vụ AI cho đoạn văn bản đã chọn từ menu ngữ cảnh.
 
-  5. 🔒 BẢO MẬT TUYỆT ĐỐI VỚI MÔ HÌNH BYOK:
+  4. 🔒 BẢO MẬT TUYỆT ĐỐI VỚI MÔ HÌNH BYOK:
      • Kết nối trực tiếp với các nhà cung cấp AI hàng đầu:
        - Google Gemini (Gemini 1.5 Flash, Gemini 1.5 Pro)
        - OpenAI (GPT-4o, GPT-4o mini)
@@ -70,7 +65,7 @@ Tài liệu này chứa toàn bộ nội dung đã được chuẩn hóa để b
   💡 HƯỚNG DẪN BẮT ĐẦU:
   1. Cài đặt tiện ích Lightning.
   2. Mở trang Cài đặt (Options) và nhập API Key của nhà cung cấp bạn muốn sử dụng (Google Gemini, OpenAI hoặc Claude).
-  3. Bôi đen bất kỳ đoạn văn bản nào trên trang web để trải nghiệm thanh công cụ nổi hoặc mở Side Panel để trò chuyện!
+  3. Bôi đen bất kỳ đoạn văn bản nào trên trang web để trải nghiệm thanh công cụ nổi!
   ```
 
 ### Categorization (Phân loại)
@@ -81,9 +76,8 @@ Tài liệu này chứa toàn bộ nội dung đã được chuẩn hóa để b
 - **Store Icon**: Tải lên file [`public/icons/icon128.png`](file:///Users/tuyennq1001/htdocs/projects/lightning/public/icons/icon128.png) (128x128 px).
 - **Screenshots (Ảnh chụp màn hình)**: Chuẩn bị 1 đến 5 ảnh định dạng **1280x800 px** hoặc **640x400 px**. Khuyến nghị 4 ảnh:
   1. *Ảnh 1*: Bôi đen văn bản trên trang web hiển thị Floating Toolbar và kết quả popup (dịch/giải thích).
-  2. *Ảnh 2*: Side Panel đang trò chuyện với AI và hiển thị khối code / Markdown.
-  3. *Ảnh 3*: Trang Cài đặt Options cấu hình BYOK (Gemini, OpenAI, Claude).
-  4. *Ảnh 4*: Tóm tắt trang web với Mozilla Readability.
+  2. *Ảnh 2*: Trang Cài đặt Options cấu hình BYOK (Gemini, OpenAI, Claude, OpenRouter).
+  3. *Ảnh 3*: Tóm tắt trang web với Mozilla Readability.
 - **Small Promo Tile**: Ảnh kích thước 440x280 px (tùy chọn hoặc khuyến nghị tạo).
 
 ---
@@ -116,17 +110,12 @@ Google sẽ hỏi lý do cho từng quyền được khai báo trong `manifest.j
    Used to safely extract article text from the active tab using Mozilla Readability when the user clicks "Summarize this page" without modifying the underlying DOM.
    ```
 
-4. **`sidePanel`**:
-   ```text
-   Used to display a persistent companion AI chat interface alongside the active browser tab for seamless assistance while browsing.
-   ```
-
-5. **`contextMenus`**:
+4. **`contextMenus`**:
    ```text
    Used to add right-click menu shortcuts (Translate, Explain, Summarize, Rewrite) on selected text for quick AI processing.
    ```
 
-6. **Host Permissions (`<all_urls>`)**:
+5. **Host Permissions (`<all_urls>`)**:
    ```text
    Required for two critical purposes:
    1. To inject the isolated Shadow DOM selection toolbar across websites where the user reads or edits text.
@@ -166,6 +155,6 @@ Nếu dashboard có mục **Reviewer notes**, hãy dán nội dung này để re
 This extension operates under the Bring Your Own Key (BYOK) model. To test its functionality:
 1. Open the Options page by clicking on the extension icon or right-clicking > Options.
 2. Enter a valid Google Gemini, OpenAI, or Anthropic Claude API key.
-3. Highlight any text on any webpage to see the floating AI action toolbar, or open the side panel to chat with the AI.
+3. Highlight any text on any webpage to see the floating AI action toolbar.
 All network requests are made directly from the client to the official provider endpoints. No backend proxy or tracking servers are involved.
 ```
