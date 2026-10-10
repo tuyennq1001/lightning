@@ -7,6 +7,7 @@ export interface CustomAction {
   isDefault?: boolean;
   isPinned?: boolean;
   shortcut?: string;
+  enabled?: boolean;
 }
 
 export type AIProvider = 'openai' | 'gemini' | 'claude' | 'openrouter';
@@ -82,12 +83,35 @@ export interface UserSettings {
   outputLanguage?: string;
   appLanguage: 'vi' | 'en' | 'ja';
   actions: CustomAction[];
+  pageActions?: CustomAction[];
   showToolbar: boolean;
+  quickAskEnabled?: boolean;
   webSearchEnabled?: boolean;
   disabledWebsites?: string[];
   fontFamily?: FontFamilyOption;
   fontSize?: FontSizeOption;
 }
+
+export const DEFAULT_PAGE_ACTIONS: CustomAction[] = [
+  {
+    id: 'summarize-page',
+    label: 'Tóm tắt trang này',
+    icon: '📄',
+    prompt: 'Tóm tắt ngắn gọn các luận điểm và nội dung chính của bài viết sau đây bằng {OUTPUT_LANG} theo định dạng gạch đầu dòng rõ ràng. Chỉ xuất ra kết quả tóm tắt, không thêm lời dẫn:\n\n"""\n{text}\n"""\n\n⚠️ YÊU CẦU BẮT BUỘC: Toàn bộ bản tóm tắt PHẢI được dịch và viết 100% bằng {OUTPUT_LANG}. Dù bài viết gốc là tiếng Nhật, tiếng Anh hay bất kỳ ngôn ngữ nào khác, TUYỆT ĐỐI KHÔNG dùng ngôn ngữ của bài viết gốc nếu khác {OUTPUT_LANG}.',
+    scene: 'reading',
+    isDefault: true,
+    shortcut: 'Alt+O',
+  },
+  {
+    id: 'simplify-page',
+    label: 'Đơn giản hóa (ELI5)',
+    icon: '🧒',
+    prompt: 'Hãy giải thích và trình bày lại toàn bộ nội dung của bài viết sau đây bằng {OUTPUT_LANG} theo cách cực kỳ đơn giản, trực quan, dễ hiểu cho người mới bắt đầu (phong cách đại chúng, bình dân).\n\nQuy tắc bắt buộc:\n- Dùng các ví dụ đời thường và hình ảnh ẩn dụ gần gũi để giải thích bản chất vấn đề.\n- Tránh dùng thuật ngữ chuyên môn phức tạp; nếu bắt buộc có thuật ngữ thì phải giải thích ngay bằng từ ngữ bình dân.\n- TUYỆT ĐỐI KHÔNG xưng hô kiểu người lớn với trẻ em (CẤM dùng các từ: "chú", "bác", "cháu", "con", "bạn nhỏ", "bé"). Giữ cách xưng hô trung tính, tôn trọng và văn minh.\n- TUYỆT ĐỐI KHÔNG thêm lời chào hỏi hay mào đầu xã giao (như "Chào bạn nhỏ...", "Chào bạn...", "Sau đây tôi xin..."). Đi thẳng ngay vào nội dung giải thích.\n\n"""\n{text}\n"""\n\n⚠️ YÊU CẦU BẮT BUỘC: Toàn bộ nội dung giải thích PHẢI được viết hoàn toàn bằng {OUTPUT_LANG}. Tuyệt đối không dùng ngôn ngữ của bài viết gốc nếu khác {OUTPUT_LANG}.',
+    scene: 'reading',
+    isDefault: true,
+    shortcut: 'Alt+P',
+  },
+];
 
 export const DEFAULT_ACTIONS: CustomAction[] = [
   { 
@@ -143,7 +167,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   outputLanguage: 'Vietnamese',
   appLanguage: 'vi',
   actions: DEFAULT_ACTIONS,
+  pageActions: DEFAULT_PAGE_ACTIONS,
   showToolbar: true,
+  quickAskEnabled: true,
   webSearchEnabled: false,
   disabledWebsites: [],
   fontFamily: 'system',
@@ -236,12 +262,54 @@ function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'
     return {
       ...a,
       isDefault: isDef,
+      enabled: a.enabled !== undefined ? a.enabled : true,
       label: a.label.replace(/\s*\([^)]*\)/g, '').trim() || a.label,
       isPinned: a.isPinned !== undefined ? a.isPinned : idx < 3,
       prompt: isDef ? (getDefaultPrompt(a.id, lang) || a.prompt) : a.prompt,
       shortcut: a.shortcut !== undefined ? a.shortcut : (defAction?.shortcut || ''),
     };
   });
+}
+
+function sanitizePageActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
+  if (!Array.isArray(actionsList) || actionsList.length === 0) {
+    return DEFAULT_PAGE_ACTIONS.map(a => ({
+      ...a,
+      prompt: getDefaultPrompt(a.id, lang) || a.prompt,
+    }));
+  }
+  const existingIds = new Set(actionsList.map(a => a.id));
+  const result: CustomAction[] = actionsList.map((a) => {
+    const isDef = a.isDefault || DEFAULT_PAGE_ACTIONS.some(d => d.id === a.id);
+    const defAction = DEFAULT_PAGE_ACTIONS.find(d => d.id === a.id);
+    let shortcut = a.shortcut !== undefined ? a.shortcut : (defAction?.shortcut || '');
+    if (isDef) {
+      if (a.id === 'summarize-page' && (shortcut === 'Alt+P' || !shortcut)) {
+        shortcut = 'Alt+O';
+      } else if (a.id === 'simplify-page' && (shortcut === 'Alt+E' || !shortcut)) {
+        shortcut = 'Alt+P';
+      }
+    }
+    return {
+      ...a,
+      isDefault: isDef,
+      enabled: a.enabled !== undefined ? a.enabled : true,
+      label: a.label.replace(/\s*\([^)]*\)/g, '').trim() || a.label,
+      prompt: isDef ? (getDefaultPrompt(a.id, lang) || a.prompt) : a.prompt,
+      shortcut,
+    };
+  });
+
+  for (const defAction of DEFAULT_PAGE_ACTIONS) {
+    if (!existingIds.has(defAction.id)) {
+      result.push({
+        ...defAction,
+        prompt: getDefaultPrompt(defAction.id, lang) || defAction.prompt,
+      });
+    }
+  }
+
+  return result;
 }
 
 export const storage = {
@@ -278,7 +346,9 @@ export const storage = {
         fontFamily: normalizeFontFamily(saved.fontFamily),
         fontSize: normalizeFontSize(saved.fontSize),
         actions: sanitizeActions(saved.actions, lang),
+        pageActions: sanitizePageActions(saved.pageActions, lang),
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
+        quickAskEnabled: saved.quickAskEnabled !== undefined ? saved.quickAskEnabled : true,
       };
     } catch {
       return DEFAULT_SETTINGS;
@@ -324,6 +394,7 @@ export const storage = {
       fontFamily: normalizeFontFamily(settings.fontFamily || currentSettings.fontFamily),
       fontSize: normalizeFontSize(settings.fontSize || currentSettings.fontSize),
       actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang),
+      pageActions: settings.pageActions ? sanitizePageActions(settings.pageActions, newLang) : sanitizePageActions(currentSettings.pageActions, newLang),
       disabledWebsites: settings.disabledWebsites !== undefined
         ? sanitizeDisabledWebsites(settings.disabledWebsites)
         : sanitizeDisabledWebsites(currentSettings.disabledWebsites),
@@ -360,6 +431,7 @@ export const storage = {
           fontFamily: normalizeFontFamily(val.fontFamily),
           fontSize: normalizeFontSize(val.fontSize),
           actions: sanitizeActions(val.actions, lang),
+          pageActions: sanitizePageActions(val.pageActions, lang),
           disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
         });
       }

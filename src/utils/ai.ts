@@ -45,11 +45,32 @@ export async function* streamAIResponse(
   }
 }
 
+export function getEffectiveSystemInstruction(settings: UserSettings): string {
+  const rawOutput = settings.outputLanguage || 'Vietnamese';
+  const normalizedOutput = rawOutput === 'tiếng Việt' ? 'Vietnamese' : rawOutput;
+  
+  let targetLangName = normalizedOutput;
+  if (normalizedOutput === 'Vietnamese') targetLangName = 'Vietnamese (Tiếng Việt)';
+  else if (normalizedOutput === 'Japanese') targetLangName = 'Japanese (日本語)';
+  else if (normalizedOutput === 'Chinese') targetLangName = 'Chinese (中文)';
+  else if (normalizedOutput === 'Korean') targetLangName = 'Korean (한국어)';
+  else if (normalizedOutput === 'English') targetLangName = 'English';
+
+  return `You are Lightning, an intelligent, fast, and accurate AI browser assistant.
+CRITICAL LANGUAGE ADHERENCE RULE:
+- You MUST write and output your entire response strictly in ${targetLangName}.
+- Even if the input text, webpage, or article is in another language (e.g., Japanese, Chinese, French, English), you MUST translate, summarize, explain, and respond strictly in ${targetLangName}.
+- NEVER output in the original document language if it differs from ${targetLangName}, unless the user prompt explicitly asks to preserve the original language (such as for in-place text rewriting or proofreading).`;
+}
+
 async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
   let finalMessages = messages;
+  const hasSystem = messages.some((m) => m.role === 'system');
+  const baseInstruction = getEffectiveSystemInstruction(settings);
+
   if (options?.webSearch) {
     const lang = (settings.appLanguage as LanguageCode) || 'vi';
-    const systemPrompt = lang === 'ja'
+    const searchNote = lang === 'ja'
       ? 'ウェブ検索モードが有効です。最新かつ正確な情報を提供し、可能であれば出典を引用してください。'
       : lang === 'en'
       ? 'Web search mode is enabled. Provide the most up-to-date and accurate information, citing sources where available.'
@@ -57,7 +78,15 @@ async function* streamOpenAI(messages: ChatMessage[], settings: UserSettings, op
     finalMessages = [
       {
         role: 'system',
-        content: systemPrompt,
+        content: `${baseInstruction}\n\n${searchNote}`,
+      },
+      ...messages
+    ];
+  } else if (!hasSystem) {
+    finalMessages = [
+      {
+        role: 'system',
+        content: baseInstruction,
       },
       ...messages
     ];
@@ -101,12 +130,10 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings, op
   const systemMessage = messages.find((m) => m.role === 'system');
   const body: any = {
     contents: geminiMessages,
+    systemInstruction: {
+      parts: [{ text: systemMessage ? systemMessage.content : getEffectiveSystemInstruction(settings) }],
+    },
   };
-  if (systemMessage) {
-    body.systemInstruction = {
-      parts: [{ text: systemMessage.content }],
-    };
-  }
 
   const lang = (settings.appLanguage as LanguageCode) || 'vi';
   const t = getT(lang);
@@ -206,10 +233,10 @@ async function* streamGemini(messages: ChatMessage[], settings: UserSettings, op
 }
 
 async function* streamClaude(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
-  let systemMessage = messages.find((m) => m.role === 'system')?.content;
+  let systemMessage = messages.find((m) => m.role === 'system')?.content || getEffectiveSystemInstruction(settings);
   if (options?.webSearch) {
     const searchNote = 'Chế độ tìm kiếm Internet đang bật. Hãy cung cấp câu trả lời mới nhất và chính xác nhất.';
-    systemMessage = systemMessage ? `${systemMessage}\n\n${searchNote}` : searchNote;
+    systemMessage = `${systemMessage}\n\n${searchNote}`;
   }
   const claudeMessages = messages.filter((m) => m.role !== 'system');
 
@@ -248,10 +275,12 @@ async function* streamClaude(messages: ChatMessage[], settings: UserSettings, op
 
 async function* streamOpenRouter(messages: ChatMessage[], settings: UserSettings, options?: StreamOptions) {
   let finalMessages = messages;
+  const hasSystem = messages.some((m) => m.role === 'system');
+  const baseInstruction = getEffectiveSystemInstruction(settings);
   const shouldSearch = options?.webSearch ?? settings.webSearchEnabled ?? false;
   if (shouldSearch) {
     const lang = (settings.appLanguage as LanguageCode) || 'vi';
-    const systemPrompt = lang === 'ja'
+    const searchNote = lang === 'ja'
       ? 'ウェブ検索モードが有効です。最新かつ正確な情報を提供し、可能であれば出典を引用してください。'
       : lang === 'en'
       ? 'Web search mode is enabled. Provide the most up-to-date and accurate information, citing sources where available.'
@@ -259,7 +288,15 @@ async function* streamOpenRouter(messages: ChatMessage[], settings: UserSettings
     finalMessages = [
       {
         role: 'system',
-        content: systemPrompt,
+        content: `${baseInstruction}\n\n${searchNote}`,
+      },
+      ...messages
+    ];
+  } else if (!hasSystem) {
+    finalMessages = [
+      {
+        role: 'system',
+        content: baseInstruction,
       },
       ...messages
     ];
