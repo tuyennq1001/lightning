@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { type UserSettings, type CustomAction, DEFAULT_ACTIONS, normalizeDomain, getDefaultOutputLanguage } from '../utils/storage';
+import { 
+  type UserSettings, 
+  type CustomAction, 
+  type FontFamilyOption, 
+  type FontSizeOption, 
+  DEFAULT_ACTIONS, 
+  normalizeDomain, 
+  getDefaultOutputLanguage,
+  getFontFamilyCss,
+  getFontSizeCss 
+} from '../utils/storage';
 import { getT, getDefaultPrompt, type LanguageCode } from '../utils/i18n';
 
 type SectionId = 'general' | 'toolbar' | 'translation' | 'provider' | 'help' | 'about';
@@ -57,6 +67,8 @@ export default function Options() {
   const [targetLanguage, setTargetLanguage] = useState('Vietnamese');
   const [outputLanguage, setOutputLanguage] = useState('Vietnamese');
   const [appLanguage, setAppLanguage] = useState<LanguageCode>('vi');
+  const [fontFamily, setFontFamily] = useState<FontFamilyOption>('system');
+  const [fontSize, setFontSize] = useState<FontSizeOption>('14px');
   const [showToolbar, setShowToolbar] = useState(true);
   const [webSearchEnabled, setWebSearchEnabled] = useState(true);
   const [actions, setActions] = useState<CustomAction[]>([]);
@@ -79,6 +91,8 @@ export default function Options() {
   const [actionIcon, setActionIcon] = useState('✨');
   const [actionPrompt, setActionPrompt] = useState('');
   const [actionScene, setActionScene] = useState<'all' | 'reading' | 'writing'>('reading');
+  const [actionShortcut, setActionShortcut] = useState('');
+  const [isRecordingShortcut, setIsRecordingShortcut] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const t = getT(appLanguage);
@@ -88,6 +102,13 @@ export default function Options() {
     const query = modelSearchQuery.toLowerCase();
     return models.filter((m) => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query));
   }, [models, modelSearchQuery]);
+
+  const conflictingAction = useMemo(() => {
+    if (!actionShortcut.trim()) return null;
+    return actions.find(
+      (a) => a.id !== editingActionId && a.shortcut?.toLowerCase() === actionShortcut.trim().toLowerCase()
+    );
+  }, [actions, actionShortcut, editingActionId]);
 
   useEffect(() => {
     document.title = 'Lightning Options';
@@ -107,6 +128,8 @@ export default function Options() {
       setTargetLanguage(settings.targetLanguage || 'Vietnamese');
       setOutputLanguage(settings.outputLanguage || getDefaultOutputLanguage((settings.appLanguage as LanguageCode) || 'vi'));
       setAppLanguage((settings.appLanguage as LanguageCode) || 'vi');
+      setFontFamily(settings.fontFamily || 'system');
+      setFontSize(settings.fontSize || '14px');
       setShowToolbar(settings.showToolbar !== false);
       setWebSearchEnabled(settings.webSearchEnabled !== false);
       setActions(settings.actions && settings.actions.length > 0 ? settings.actions : DEFAULT_ACTIONS);
@@ -304,7 +327,9 @@ export default function Options() {
     newAppLang?: LanguageCode,
     newWebSearch?: boolean,
     newDisabledWebsites?: string[],
-    newOutputLang?: string
+    newOutputLang?: string,
+    newFontFamily?: FontFamilyOption,
+    newFontSize?: FontSizeOption
   ) => {
     const actionsToSave = newActions || actions;
     const toolbarToSave = newShowToolbar !== undefined ? newShowToolbar : showToolbar;
@@ -312,6 +337,8 @@ export default function Options() {
     const webSearchToSave = newWebSearch !== undefined ? newWebSearch : webSearchEnabled;
     const disabledWebsitesToSave = newDisabledWebsites !== undefined ? newDisabledWebsites : disabledWebsites;
     const outputLangToSave = newOutputLang !== undefined ? newOutputLang : outputLanguage;
+    const fontFamilyToSave = newFontFamily || fontFamily;
+    const fontSizeToSave = newFontSize || fontSize;
     
     const updatedApiKeys = { ...apiKeys, [provider]: localKey.trim() };
     const updatedModelIds = { ...modelIds, [provider]: modelId.trim() };
@@ -332,9 +359,21 @@ export default function Options() {
       showToolbar: toolbarToSave,
       webSearchEnabled: webSearchToSave,
       disabledWebsites: disabledWebsitesToSave,
+      fontFamily: fontFamilyToSave,
+      fontSize: fontSizeToSave,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleFontFamilyChange = async (newFamily: FontFamilyOption) => {
+    setFontFamily(newFamily);
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, newFamily, fontSize);
+  };
+
+  const handleFontSizeChange = async (newSize: FontSizeOption) => {
+    setFontSize(newSize);
+    await handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage, fontFamily, newSize);
   };
 
   const handleAddDomain = async (e?: React.FormEvent) => {
@@ -394,16 +433,70 @@ export default function Options() {
     setActionIcon('✨');
     setActionPrompt('');
     setActionScene('reading');
+    setActionShortcut('');
+    setIsRecordingShortcut(false);
     setShowModal(true);
   };
 
   const openEditModal = (action: CustomAction) => {
     setEditingActionId(action.id);
-    setActionName(action.label);
+    const displayLabel = (action.isDefault) ? (
+      action.id === 'translate' ? t.actionTranslate :
+      action.id === 'summarize' ? t.actionSummarize :
+      action.id === 'explain' ? t.actionExplain :
+      action.id === 'rewrite' ? t.actionRewrite : action.label
+    ) : action.label;
+    setActionName(displayLabel);
     setActionIcon(action.icon);
-    setActionPrompt(action.prompt);
+    setActionPrompt(action.isDefault ? (getDefaultPrompt(action.id, appLanguage) || action.prompt) : action.prompt);
     setActionScene(action.scene);
+    setActionShortcut(action.shortcut || '');
+    setIsRecordingShortcut(false);
     setShowModal(true);
+  };
+
+  const handleShortcutKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.key === 'Escape') {
+      setIsRecordingShortcut(false);
+      return;
+    }
+    if (e.key === 'Tab') {
+      return;
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      setActionShortcut('');
+      setIsRecordingShortcut(false);
+      return;
+    }
+
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) {
+      return;
+    }
+
+    const parts: string[] = [];
+    if (e.ctrlKey) parts.push('Ctrl');
+    if (e.altKey) parts.push('Alt');
+    if (e.shiftKey) parts.push('Shift');
+    if (e.metaKey) parts.push('Command');
+
+    let mainKey = e.key.toUpperCase();
+    if (e.code.startsWith('Key')) {
+      mainKey = e.code.slice(3).toUpperCase();
+    } else if (e.code.startsWith('Digit')) {
+      mainKey = e.code.slice(5);
+    }
+
+    if (parts.length === 0) {
+      parts.push('Alt');
+    }
+
+    parts.push(mainKey);
+    const combo = parts.join('+');
+    setActionShortcut(combo);
+    setIsRecordingShortcut(false);
   };
 
   const handleSaveAction = async () => {
@@ -419,6 +512,7 @@ export default function Options() {
             icon: actionIcon.trim() || '⚡',
             prompt: actionPrompt.trim(),
             scene: actionScene,
+            shortcut: actionShortcut.trim(),
           };
         }
         return a;
@@ -430,6 +524,7 @@ export default function Options() {
         icon: actionIcon.trim() || '⚡',
         prompt: actionPrompt.trim(),
         scene: actionScene,
+        shortcut: actionShortcut.trim(),
         isPinned: false,
         isDefault: false
       };
@@ -648,6 +743,96 @@ export default function Options() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Font Family & Size Settings Card */}
+            <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 mb-1">{t.fontSectionTitle}</h3>
+                <p className="text-xs text-slate-500">{t.fontSectionDesc}</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Font Family Pulldown */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">
+                    {t.fontFamilyLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={fontFamily}
+                      onChange={(e) => handleFontFamilyChange(e.target.value as FontFamilyOption)}
+                    >
+                      {[
+                        { id: 'system', label: t.fontSystem },
+                        { id: 'inter', label: t.fontInter },
+                        { id: 'roboto', label: t.fontRoboto },
+                        { id: 'arial', label: t.fontArial },
+                        { id: 'georgia', label: t.fontGeorgia },
+                        { id: 'merriweather', label: t.fontMerriweather },
+                        { id: 'mono', label: t.fontMono },
+                      ].map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
+                </div>
+
+                {/* Font Size Pulldown */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-2">
+                    {t.fontSizeLabel}
+                  </label>
+                  <div className="relative">
+                    <select
+                      className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
+                      value={fontSize}
+                      onChange={(e) => handleFontSizeChange(e.target.value as FontSizeOption)}
+                    >
+                      {[
+                        { id: '12px', label: t.fontSize12 },
+                        { id: '13px', label: t.fontSize13 },
+                        { id: '14px', label: t.fontSize14 },
+                        { id: '15px', label: t.fontSize15 },
+                        { id: '16px', label: t.fontSize16 },
+                        { id: '18px', label: t.fontSize18 },
+                        { id: '20px', label: t.fontSize20 },
+                      ].map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    {t.fontPreviewTitle}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {fontFamily} • {fontSize}
+                  </span>
+                </div>
+                <div 
+                  className="text-slate-800 leading-relaxed transition-all"
+                  style={{
+                    fontFamily: getFontFamilyCss(fontFamily),
+                    fontSize: getFontSizeCss(fontSize),
+                  }}
+                >
+                  <p className="font-semibold text-slate-900 mb-1">⚡ Lightning AI Result</p>
+                  <p>{t.fontPreviewSample}</p>
+                </div>
               </div>
             </div>
           </section>
@@ -948,23 +1133,34 @@ export default function Options() {
                             </div>
 
                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                              <span>{action.isDefault ? t.defaultBadge : t.customBadge}</span>
-                              {!action.isDefault && (
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => openEditModal(action)}
-                                    className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
-                                  >
-                                    {t.editAction}
-                                  </button>
+                              <div className="flex items-center gap-2">
+                                <span>{action.isDefault ? t.defaultBadge : t.customBadge}</span>
+                                {action.shortcut ? (
+                                  <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded">
+                                    {action.shortcut}
+                                  </kbd>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">
+                                    {t.noShortcut}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => openEditModal(action)}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-xs cursor-pointer"
+                                >
+                                  {t.editAction}
+                                </button>
+                                {!action.isDefault && (
                                   <button
                                     onClick={() => removeAction(action.id)}
                                     className="text-red-500 hover:text-red-700 hover:underline font-medium text-xs cursor-pointer"
                                   >
                                     {t.deleteAction}
                                   </button>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -1466,6 +1662,56 @@ export default function Options() {
                     <span>{t.conditionAll}</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Shortcut Key Recorder */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  {t.actionShortcutLabel}
+                </label>
+                <p className="text-xs text-slate-500 mb-2">
+                  {t.actionShortcutDesc}
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      readOnly
+                      onFocus={() => setIsRecordingShortcut(true)}
+                      onBlur={() => setIsRecordingShortcut(false)}
+                      onKeyDown={handleShortcutKeyDown}
+                      value={isRecordingShortcut ? t.actionShortcutRecording : actionShortcut || ''}
+                      placeholder={t.actionShortcutPlaceholder}
+                      className={`w-full px-3.5 py-2 text-sm rounded-xl font-mono transition-all cursor-pointer ${
+                        isRecordingShortcut
+                          ? 'bg-blue-50 border-2 border-blue-500 text-blue-700 ring-2 ring-blue-500/20'
+                          : actionShortcut
+                          ? 'bg-slate-50 border border-slate-200 text-slate-900 font-bold'
+                          : 'bg-slate-50 border border-slate-200 text-slate-400'
+                      }`}
+                    />
+                  </div>
+                  {actionShortcut && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActionShortcut('');
+                        setIsRecordingShortcut(false);
+                      }}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    >
+                      {t.actionShortcutClear}
+                    </button>
+                  )}
+                </div>
+
+                {/* Conflict warning */}
+                {conflictingAction && (
+                  <p className="text-xs text-rose-500 font-medium flex items-center gap-1.5 mt-2">
+                    <span>⚠️</span>
+                    <span>{t.actionShortcutConflict(conflictingAction.label)}</span>
+                  </p>
+                )}
               </div>
             </div>
 

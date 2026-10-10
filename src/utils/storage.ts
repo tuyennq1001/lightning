@@ -6,9 +6,70 @@ export interface CustomAction {
   scene: 'all' | 'reading' | 'writing';
   isDefault?: boolean;
   isPinned?: boolean;
+  shortcut?: string;
 }
 
 export type AIProvider = 'openai' | 'gemini' | 'claude' | 'openrouter';
+
+export type FontFamilyOption = 
+  | 'system'
+  | 'inter'
+  | 'roboto'
+  | 'arial'
+  | 'georgia'
+  | 'merriweather'
+  | 'mono';
+
+export type FontSizeOption = 
+  | '12px'
+  | '13px'
+  | '14px'
+  | '15px'
+  | '16px'
+  | '18px'
+  | '20px';
+
+export const FONT_FAMILY_STACKS: Record<FontFamilyOption, string> = {
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  inter: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  roboto: '"Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+  arial: 'Arial, "Helvetica Neue", Helvetica, sans-serif',
+  georgia: 'Georgia, Cambria, "Times New Roman", Times, serif',
+  merriweather: '"Merriweather", Georgia, Cambria, serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+};
+
+export function normalizeFontFamily(input?: string): FontFamilyOption {
+  if (!input) return 'system';
+  if (input === 'sans') return 'system';
+  if (input === 'serif') return 'georgia';
+  if (Object.prototype.hasOwnProperty.call(FONT_FAMILY_STACKS, input)) {
+    return input as FontFamilyOption;
+  }
+  return 'system';
+}
+
+export function normalizeFontSize(input?: string): FontSizeOption {
+  if (!input) return '14px';
+  if (input === 'sm') return '13px';
+  if (input === 'base') return '14px';
+  if (input === 'lg') return '16px';
+  if (input === 'xl') return '18px';
+  const validSizes: FontSizeOption[] = ['12px', '13px', '14px', '15px', '16px', '18px', '20px'];
+  if (validSizes.includes(input as FontSizeOption)) {
+    return input as FontSizeOption;
+  }
+  return '14px';
+}
+
+export function getFontFamilyCss(family?: string): string {
+  const normalized = normalizeFontFamily(family);
+  return FONT_FAMILY_STACKS[normalized];
+}
+
+export function getFontSizeCss(size?: string): string {
+  return normalizeFontSize(size);
+}
 
 export interface UserSettings {
   apiKey: string;
@@ -24,6 +85,8 @@ export interface UserSettings {
   showToolbar: boolean;
   webSearchEnabled?: boolean;
   disabledWebsites?: string[];
+  fontFamily?: FontFamilyOption;
+  fontSize?: FontSizeOption;
 }
 
 export const DEFAULT_ACTIONS: CustomAction[] = [
@@ -34,7 +97,8 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     prompt: 'Dịch đoạn văn bản sau sang {TARGET_LANG}. Chỉ xuất ra kết quả dịch chính xác và tự nhiên nhất, tuyệt đối không kèm lời dẫn hay giải thích:\n\n{text}', 
     scene: 'all', 
     isDefault: true,
-    isPinned: true
+    isPinned: true,
+    shortcut: 'Alt+T'
   },
   { 
     id: 'rewrite', 
@@ -43,7 +107,8 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     prompt: 'Viết lại đoạn văn bản sau cho hay, mạch lạc và tự nhiên hơn. ĐẢM BẢO TUYỆT ĐỐI GIỮ NGUYÊN NGÔN NGỮ CỦA VĂN BẢN GỐC (nếu gốc là tiếng Anh thì viết lại bằng tiếng Anh, gốc là tiếng Nhật viết lại bằng tiếng Nhật). Chỉ xuất ra kết quả viết lại, không kèm lời dẫn hay giải thích:\n\n{text}', 
     scene: 'writing', 
     isDefault: true,
-    isPinned: true
+    isPinned: true,
+    shortcut: 'Alt+R'
   },
   { 
     id: 'summarize', 
@@ -52,7 +117,8 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     prompt: 'Tóm tắt ngắn gọn các ý chính của đoạn văn bản sau bằng {OUTPUT_LANG}. Chỉ xuất ra nội dung tóm tắt, không thêm câu giao tiếp hay lời dẫn:\n\n{text}', 
     scene: 'reading', 
     isDefault: true,
-    isPinned: true
+    isPinned: true,
+    shortcut: 'Alt+S'
   },
   { 
     id: 'explain', 
@@ -61,7 +127,8 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
     prompt: 'Giải thích chi tiết ý nghĩa và ngữ cảnh của đoạn văn bản sau bằng {OUTPUT_LANG}. Chỉ xuất ra nội dung giải thích, không thêm lời dẫn:\n\n{text}', 
     scene: 'reading', 
     isDefault: true,
-    isPinned: false
+    isPinned: false,
+    shortcut: 'Alt+E'
   },
 ];
 
@@ -79,6 +146,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   showToolbar: true,
   webSearchEnabled: false,
   disabledWebsites: [],
+  fontFamily: 'system',
+  fontSize: '14px',
 };
 
 import { getDefaultPrompt, type LanguageCode } from './i18n.ts';
@@ -163,12 +232,14 @@ function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'
   }
   return actionsList.map((a, idx) => {
     const isDef = a.isDefault || DEFAULT_ACTIONS.some(d => d.id === a.id);
+    const defAction = DEFAULT_ACTIONS.find(d => d.id === a.id);
     return {
       ...a,
       isDefault: isDef,
       label: a.label.replace(/\s*\([^)]*\)/g, '').trim() || a.label,
       isPinned: a.isPinned !== undefined ? a.isPinned : idx < 3,
       prompt: isDef ? (getDefaultPrompt(a.id, lang) || a.prompt) : a.prompt,
+      shortcut: a.shortcut !== undefined ? a.shortcut : (defAction?.shortcut || ''),
     };
   });
 }
@@ -204,6 +275,8 @@ export const storage = {
         apiKeys,
         modelIds,
         outputLanguage,
+        fontFamily: normalizeFontFamily(saved.fontFamily),
+        fontSize: normalizeFontSize(saved.fontSize),
         actions: sanitizeActions(saved.actions, lang),
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
       };
@@ -248,6 +321,8 @@ export const storage = {
       apiKeys: newApiKeys,
       modelIds: newModelIds,
       outputLanguage: newOutputLang,
+      fontFamily: normalizeFontFamily(settings.fontFamily || currentSettings.fontFamily),
+      fontSize: normalizeFontSize(settings.fontSize || currentSettings.fontSize),
       actions: settings.actions ? sanitizeActions(settings.actions, newLang) : sanitizeActions(currentSettings.actions, newLang),
       disabledWebsites: settings.disabledWebsites !== undefined
         ? sanitizeDisabledWebsites(settings.disabledWebsites)
@@ -282,6 +357,8 @@ export const storage = {
           apiKeys,
           modelIds,
           outputLanguage,
+          fontFamily: normalizeFontFamily(val.fontFamily),
+          fontSize: normalizeFontSize(val.fontSize),
           actions: sanitizeActions(val.actions, lang),
           disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
         });
