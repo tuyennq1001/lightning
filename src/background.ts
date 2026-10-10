@@ -1,4 +1,4 @@
-import { storage, type UserSettings, DEFAULT_ACTIONS, DEFAULT_PAGE_ACTIONS } from './utils/storage';
+import { storage, type UserSettings, DEFAULT_PAGE_ACTIONS } from './utils/storage';
 import { streamAIResponse, type ChatMessage } from './utils/ai';
 import { getT, type LanguageCode } from './utils/i18n';
 // Open options page directly when clicking the extension action icon
@@ -30,7 +30,7 @@ const updateContextMenus = (settings: UserSettings) => {
         if (chrome.runtime.lastError) { /* ignore */ }
       });
 
-      pageActions.filter((pAction) => pAction.enabled !== false && pAction.id !== 'summarize-youtube').forEach((pAction) => {
+      pageActions.filter((pAction) => pAction.enabled !== false && pAction.id !== 'summarize-youtube' && pAction.id !== 'summarize-link').forEach((pAction) => {
         let label = pAction.label;
         if (pAction.isDefault) {
           if (pAction.id === 'summarize-page') label = t.actionSummarizePage;
@@ -48,34 +48,18 @@ const updateContextMenus = (settings: UserSettings) => {
         });
       });
 
-      // Actions from settings
-      const actions = (settings?.actions && settings.actions.length > 0) ? settings.actions : DEFAULT_ACTIONS;
-      actions.filter((action) => action.enabled !== false).forEach((action) => {
-        let contexts: any[] = ['selection'];
-        if (action.scene === 'writing') {
-          contexts = ['editable'];
-        } else if (action.scene === 'reading') {
-          contexts = ['selection'];
-        } else {
-          contexts = ['selection', 'editable'];
-        }
-
-        let label = action.label;
-        if (action.isDefault) {
-          if (action.id === 'translate') label = t.actionTranslate;
-          else if (action.id === 'summarize') label = t.actionSummarize;
-          else if (action.id === 'explain') label = t.actionExplain;
-          else if (action.id === 'rewrite') label = t.actionRewrite;
-        }
-
+      // Link context menu (appears when right-clicking on any hyperlink)
+      const linkSummarizeAction = pageActions.find(p => p.id === 'summarize-link');
+      if (linkSummarizeAction && linkSummarizeAction.enabled !== false) {
         chrome.contextMenus.create({
-          id: action.id,
-          title: `${label} ${action.icon}`,
-          contexts: contexts
-        } as any, () => {
+          id: 'summarize-link',
+          title: `Lightning AI: ${t.actionSummarizeLink}`,
+          contexts: ['link'],
+        }, () => {
           if (chrome.runtime.lastError) { /* ignore */ }
         });
-      });
+      }
+
     });
   } catch (err) {
     console.error('Error updating context menus:', err);
@@ -113,18 +97,66 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       action: 'CONTEXT_MENU_CLICK',
       menuId: info.menuItemId,
       selectionText: info.selectionText || '',
+      linkUrl: info.linkUrl || '',
     }, () => {
       if (chrome.runtime.lastError) { /* ignore */ }
     });
   }
 });
 
-chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, _sendResponse: (response?: any) => void) => {
+chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.action === 'ASK_AI') {
     handleAIRequest(message.messages, sender.tab?.id, { webSearch: Boolean(message.webSearch) });
     return true;
   }
+  if (message.action === 'FETCH_URL_CONTENT') {
+    handleFetchUrlContent(message.url)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ success: false, url: message.url, error: err?.message || 'Lỗi tải trang' }));
+    return true;
+  }
 });
+
+async function handleFetchUrlContent(url: string): Promise<{ success: boolean; html?: string; url: string; error?: string }> {
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('Chỉ hỗ trợ giao thức HTTP và HTTPS');
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} (${response.statusText})`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType && !contentType.includes('text/html') && !contentType.includes('text/plain') && !contentType.includes('application/xhtml+xml')) {
+      throw new Error(`Định dạng không được hỗ trợ (${contentType.split(';')[0]})`);
+    }
+
+    const html = await response.text();
+    return { success: true, html, url: response.url || url };
+  } catch (err: any) {
+    return {
+      success: false,
+      url,
+      error: err.name === 'AbortError' ? 'Hết thời gian chờ kết nối (Timeout)' : (err.message || 'Lỗi kết nối'),
+    };
+  }
+}
 
 async function handleAIRequest(messages: ChatMessage[], tabId?: number, options?: { webSearch?: boolean }) {
   if (!tabId) return;

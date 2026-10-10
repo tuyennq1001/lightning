@@ -16,6 +16,39 @@ import {
 import { getT, getDefaultPrompt, stripFlagEmoji, type LanguageCode } from './utils/i18n';
 import MarkdownRenderer from './components/MarkdownRenderer';
 
+function isValidHttpUrl(str: string): boolean {
+  if (!str) return false;
+  const trimmed = str.trim();
+  if (!/^https?:\/\//i.test(trimmed) && !/^www\./i.test(trimmed)) {
+    return false;
+  }
+  try {
+    const urlToTest = /^www\./i.test(trimmed) ? `https://${trimmed}` : trimmed;
+    const url = new URL(urlToTest);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function extractFirstUrl(str: string): string | null {
+  if (!str) return null;
+  const trimmed = str.trim();
+  if (isValidHttpUrl(trimmed)) {
+    return /^www\./i.test(trimmed) ? `https://${trimmed}` : trimmed;
+  }
+  const match = trimmed.match(/https?:\/\/[^\s<>"'{}|\\^`[\]]+/i);
+  if (match) {
+    try {
+      new URL(match[0]);
+      return match[0];
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function ActionIcon({ action }: { action: CustomAction }) {
   if (action.id === 'translate') {
     return (
@@ -48,6 +81,13 @@ function ActionIcon({ action }: { action: CustomAction }) {
       </svg>
     );
   }
+  if (action.id === 'summarize-link') {
+    return (
+      <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+      </svg>
+    );
+  }
   return <span className="text-sm">{action.icon || '⚡'}</span>;
 }
 
@@ -60,6 +100,7 @@ function getLocalizedActionLabel(action: CustomAction, lang: LanguageCode) {
     if (action.id === 'rewrite') return t.actionRewrite;
     if (action.id === 'summarize-page') return t.actionSummarizePage;
     if (action.id === 'simplify-page') return t.actionSimplifyPage;
+    if (action.id === 'summarize-link') return t.actionSummarizeLink;
   }
   return action.label;
 }
@@ -98,6 +139,11 @@ function FloatingToolbar() {
   const [modalPosition, setModalPosition] = useState<{ x: number; y: number } | null>(null);
   const [activeAction, setActiveAction] = useState<CustomAction | null>(null);
   const [isPageAction, setIsPageAction] = useState(false);
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  const [isLinkAction, setIsLinkAction] = useState(false);
+  const [currentLinkUrl, setCurrentLinkUrl] = useState('');
+  const [isLoadingLinkContent, setIsLoadingLinkContent] = useState(false);
+  const [linkFetchError, setLinkFetchError] = useState<string | null>(null);
   const [isQuickAskMode, setIsQuickAskMode] = useState(false);
   const [quickAskQuestion, setQuickAskQuestion] = useState('');
   const [webSearchActive, setWebSearchActive] = useState(true);
@@ -122,6 +168,8 @@ function FloatingToolbar() {
 
   const extractedArticleRef = useRef<string>('');
   const pageActionCacheRef = useRef<Record<string, string>>({});
+  const linkArticleCacheRef = useRef<Record<string, string>>({});
+  const linkActionCacheRef = useRef<Record<string, string>>({});
   const aiResponseRef = useRef<string>('');
   useEffect(() => {
     aiResponseRef.current = aiResponse;
@@ -137,18 +185,35 @@ function FloatingToolbar() {
     isPageActionRef.current = isPageAction;
   }, [isPageAction]);
 
+  const isLinkActionRef = useRef(false);
+  useEffect(() => {
+    isLinkActionRef.current = isLinkAction;
+  }, [isLinkAction]);
+
+  const currentLinkUrlRef = useRef('');
+  useEffect(() => {
+    currentLinkUrlRef.current = currentLinkUrl;
+  }, [currentLinkUrl]);
+
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ mouseX: number; mouseY: number; modalX: number; modalY: number } | null>(null);
+  const lastContextMenuPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleCloseModal = () => {
     setShowModal(false);
     setIsPageAction(false);
+    setIsLinkAction(false);
+    setCurrentLinkUrl('');
+    setIsLoadingLinkContent(false);
+    setLinkFetchError(null);
+    setIsGenerating(false);
     setIsDragging(false);
     dragStartRef.current = null;
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
     pageActionCacheRef.current = {};
     extractedArticleRef.current = '';
+    linkActionCacheRef.current = {};
   };
 
   useEffect(() => {
@@ -199,8 +264,31 @@ function FloatingToolbar() {
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, []);
 
+  // Handle right-click contextmenu: save position and close toolbar so it doesn't overlap native context menu
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      const container = document.getElementById('lightning-ai-root');
+      if (container && container.contains(e.target as Node)) return;
+
+      lastContextMenuPosRef.current = {
+        x: e.pageX || (window.innerWidth / 2 + window.scrollX),
+        y: e.pageY || (window.innerHeight / 3 + window.scrollY),
+      };
+
+      setPosition(null);
+      setShowMoreMenu(false);
+      setShowCloseMenu(false);
+    };
+
+    window.addEventListener('contextmenu', handleContextMenu, true);
+    return () => window.removeEventListener('contextmenu', handleContextMenu, true);
+  }, []);
+
   useEffect(() => {
     const handleMouseUp = (e: MouseEvent) => {
+      // Only trigger on left-click (button === 0)
+      if (e.button !== 0) return;
+
       // Don't trigger if clicking inside our own UI
       const container = document.getElementById('lightning-ai-root');
       if (container && container.contains(e.target as Node)) return;
@@ -241,6 +329,31 @@ function FloatingToolbar() {
             // Hide previous modal popup when selecting new text
             setShowModal(false);
 
+            let urlDetected: string | null = extractFirstUrl(text);
+            if (!urlDetected) {
+              try {
+                const selection = window.getSelection();
+                if (selection) {
+                  const nodesToCheck = [selection.anchorNode, selection.focusNode];
+                  for (const node of nodesToCheck) {
+                    if (!node) continue;
+                    const el = node instanceof Element ? node : node.parentElement;
+                    const anchor = el?.closest('a');
+                    if (anchor) {
+                      const rawHref = anchor instanceof HTMLAnchorElement ? anchor.href : ((anchor as Element)?.getAttribute('href') || '');
+                      if (typeof rawHref === 'string' && isValidHttpUrl(rawHref)) {
+                        urlDetected = rawHref;
+                        break;
+                      }
+                    }
+                  }
+                }
+              } catch {
+                // Ignore DOM selection traversal errors safely
+              }
+            }
+            setDetectedUrl(urlDetected);
+
             // Position EXACTLY at the cursor end point (where mouse released)
             const endX = e.pageX || (window.innerWidth / 2 + window.scrollX);
             const endY = e.pageY || (window.innerHeight / 2 + window.scrollY);
@@ -256,6 +369,7 @@ function FloatingToolbar() {
             setShowCloseMenu(false);
           } else {
             setPosition(null);
+            setDetectedUrl(null);
             setShowMoreMenu(false);
             setShowCloseMenu(false);
           }
@@ -269,7 +383,7 @@ function FloatingToolbar() {
     return () => document.removeEventListener('mouseup', handleMouseUp);
   }, []);
 
-  const handleContextMenuActionRef = useRef<((menuId: string, text?: string) => void) | null>(null);
+  const handleContextMenuActionRef = useRef<((menuId: string, text?: string, linkUrl?: string) => void) | null>(null);
 
   useEffect(() => {
     const messageListener = (message: any) => {
@@ -277,14 +391,22 @@ function FloatingToolbar() {
         setAiResponse((prev) => {
           const next = prev + message.chunk;
           if (activeActionRef.current) {
-            pageActionCacheRef.current[activeActionRef.current.id] = next;
+            if (isLinkActionRef.current) {
+              linkActionCacheRef.current[activeActionRef.current.id] = next;
+            } else {
+              pageActionCacheRef.current[activeActionRef.current.id] = next;
+            }
           }
           return next;
         });
       } else if (message.action === 'AI_DONE') {
         setIsGenerating(false);
         if (activeActionRef.current) {
-          pageActionCacheRef.current[activeActionRef.current.id] = aiResponseRef.current;
+          if (isLinkActionRef.current) {
+            linkActionCacheRef.current[activeActionRef.current.id] = aiResponseRef.current;
+          } else {
+            pageActionCacheRef.current[activeActionRef.current.id] = aiResponseRef.current;
+          }
         }
       } else if (message.action === 'AI_ERROR') {
         const curLang = (settingsRef.current?.appLanguage as LanguageCode) || 'vi';
@@ -292,7 +414,7 @@ function FloatingToolbar() {
         setAiResponse((prev) => prev + `\n\n[${curT.errorPrefix}: ${message.error}]`);
         setIsGenerating(false);
       } else if (message.action === 'CONTEXT_MENU_CLICK') {
-        handleContextMenuActionRef.current?.(message.menuId, message.selectionText);
+        handleContextMenuActionRef.current?.(message.menuId, message.selectionText, message.linkUrl);
       }
     };
 
@@ -304,7 +426,11 @@ function FloatingToolbar() {
     setAiResponse('');
     setIsGenerating(true);
     if (activeActionRef.current) {
-      pageActionCacheRef.current[action.id] = '';
+      if (isLinkActionRef.current) {
+        linkActionCacheRef.current[action.id] = '';
+      } else {
+        pageActionCacheRef.current[action.id] = '';
+      }
     }
     
     const curSettings = settingsRef.current;
@@ -335,7 +461,9 @@ function FloatingToolbar() {
     const sourceOption = t.sourceLanguages.find((l) => l.code === rawSource);
     const sourceLang = sourceOption ? sourceOption.label : rawSource;
     const pageTitle = document.title || '';
-    const pageUrl = window.location.href || '';
+    const pageUrl = (isLinkActionRef.current && currentLinkUrlRef.current)
+      ? currentLinkUrlRef.current
+      : (window.location.href || '');
 
     prompt = prompt.replace(/{TARGET_LANG}/g, stripFlagEmoji(targetLang));
     prompt = prompt.replace(/{OUTPUT_LANG}/g, outputLangString);
@@ -376,7 +504,7 @@ function FloatingToolbar() {
     }
   };
 
-  const triggerPageActionDirectly = (action: CustomAction) => {
+  const triggerPageActionDirectly = (action: CustomAction, customPos?: { x: number; y: number }) => {
     // If modal is already open in page action mode, simply switch tab without resetting position or recreating modal
     if (showModalRef.current && isPageActionRef.current) {
       handleSwitchPageActionTab(action);
@@ -387,8 +515,8 @@ function FloatingToolbar() {
     const curLang = (curSettings?.appLanguage as LanguageCode) || 'vi';
     const curT = getT(curLang);
 
-    const posX = window.innerWidth / 2 + window.scrollX;
-    const posY = window.innerHeight / 3 + window.scrollY;
+    const posX = customPos?.x || (window.innerWidth / 2 + window.scrollX);
+    const posY = customPos?.y || (window.innerHeight / 3 + window.scrollY);
 
     const clampedPos = {
       x: Math.min(Math.max(225, posX), window.innerWidth + window.scrollX - 225),
@@ -435,17 +563,120 @@ function FloatingToolbar() {
     triggerPageActionRef.current = triggerPageActionDirectly;
   });
 
-  const handleContextMenuAction = (menuId: string, text?: string) => {
+
+  const triggerLinkActionDirectly = (action: CustomAction, urlToFetch: string, customPos?: { x: number; y: number }) => {
+    const cleanUrl = (urlToFetch || '').trim();
+    if (!cleanUrl) return;
+
+    const posX = customPos?.x || (window.innerWidth / 2 + window.scrollX);
+    const posY = customPos?.y || (window.innerHeight / 3 + window.scrollY);
+
+    const clampedPos = {
+      x: Math.min(Math.max(225, posX), window.innerWidth + window.scrollX - 225),
+      y: posY,
+    };
+
+    setIsLinkAction(true);
+    setIsPageAction(false);
+    setCurrentLinkUrl(cleanUrl);
+    setSelectedText(cleanUrl);
+    setTargetElement(null);
+    setCurrentScene('reading');
+    setModalPosition(clampedPos);
+    setActiveAction(action);
+    setIsQuickAskMode(false);
+    setShowModal(true);
+    setPosition(null);
+    setShowMoreMenu(false);
+    setShowCloseMenu(false);
+    setLinkFetchError(null);
+
+    const cachedArticle = linkArticleCacheRef.current[cleanUrl];
+    if (cachedArticle) {
+      const cachedResponse = linkActionCacheRef.current[action.id];
+      if (cachedResponse) {
+        setAiResponse(cachedResponse);
+        setIsGenerating(false);
+      } else {
+        startAI(action, cachedArticle);
+      }
+      return;
+    }
+
+    setAiResponse('');
+    setIsGenerating(false);
+    setIsLoadingLinkContent(true);
+
+    chrome.runtime.sendMessage({ action: 'FETCH_URL_CONTENT', url: cleanUrl }, (response) => {
+      setIsLoadingLinkContent(false);
+      if (chrome.runtime.lastError || !response?.success) {
+        const errMsg = response?.error || chrome.runtime.lastError?.message || t.errFetchLink;
+        setLinkFetchError(errMsg);
+        return;
+      }
+
+      let article = '';
+      try {
+        const doc = new DOMParser().parseFromString(response.html, 'text/html');
+        const reader = new Readability(doc);
+        const articleObj = reader.parse();
+        const content = articleObj?.textContent || doc.body?.innerText || '';
+        article = (content || '').trim().substring(0, 15000);
+      } catch {
+        article = '';
+      }
+
+      if (!article || article.length < 20) {
+        setLinkFetchError(t.errFetchLink);
+        return;
+      }
+
+      linkArticleCacheRef.current[cleanUrl] = article;
+      startAI(action, article);
+    });
+  };
+
+  const triggerLinkActionRef = useRef<typeof triggerLinkActionDirectly | null>(null);
+  useEffect(() => {
+    triggerLinkActionRef.current = triggerLinkActionDirectly;
+  });
+
+  const handleContextMenuAction = (menuId: string, text?: string, linkUrl?: string) => {
     const curSettings = settingsRef.current;
     const actions = curSettings?.actions && curSettings.actions.length > 0 ? curSettings.actions : DEFAULT_ACTIONS;
+    const pageActions = curSettings?.pageActions && curSettings.pageActions.length > 0
+      ? curSettings.pageActions
+      : DEFAULT_PAGE_ACTIONS;
 
-    const viewportX = window.innerWidth / 2 + window.scrollX;
-    const viewportY = window.innerHeight / 3 + window.scrollY;
+    const clickPos = lastContextMenuPosRef.current;
+    const defaultX = window.innerWidth / 2 + window.scrollX;
+    const defaultY = window.innerHeight / 3 + window.scrollY;
+    const targetX = clickPos ? clickPos.x : (position ? position.x : defaultX);
+    const targetY = clickPos ? clickPos.y : (position ? position.y : defaultY);
+
+    const clampedPos = {
+      x: Math.min(Math.max(225, targetX), window.innerWidth + window.scrollX - 225),
+      y: targetY,
+    };
     
-    setModalPosition(position || { x: viewportX, y: viewportY });
+    setModalPosition(clampedPos);
     setPosition(null); 
     setShowMoreMenu(false);
     setIsQuickAskMode(false);
+
+    if (menuId === 'summarize-link') {
+      const targetUrl = linkUrl || extractFirstUrl(text || '') || text || '';
+      const targetAction = pageActions.find(a => a.id === 'summarize-link') || {
+        id: 'summarize-link',
+        label: t.actionSummarizeLink,
+        icon: '🔗',
+        prompt: '',
+        scene: 'reading',
+        isDefault: true,
+      };
+      triggerLinkActionDirectly(targetAction, targetUrl, clampedPos);
+      return;
+    }
 
     const activeEl = document.activeElement as HTMLElement;
     let isWriting = false;
@@ -458,17 +689,15 @@ function FloatingToolbar() {
     setTargetElement(activeElTarget);
     setCurrentScene(isWriting ? 'writing' : 'reading');
 
-    const pageActions = curSettings?.pageActions && curSettings.pageActions.length > 0
-      ? curSettings.pageActions
-      : DEFAULT_PAGE_ACTIONS;
     const targetPageAction = pageActions.find(a => a.id === menuId);
 
     if (targetPageAction) {
-      triggerPageActionDirectly(targetPageAction);
+      triggerPageActionDirectly(targetPageAction, clampedPos);
     } else {
       const action = actions.find(a => a.id === menuId);
       if (action) {
         setIsPageAction(false);
+        setIsLinkAction(false);
         pageActionCacheRef.current = {};
         extractedArticleRef.current = '';
         setSelectedText(text || '');
@@ -485,6 +714,7 @@ function FloatingToolbar() {
 
   const handleAction = (action: CustomAction) => {
     setIsPageAction(false);
+    setIsLinkAction(false);
     pageActionCacheRef.current = {};
     extractedArticleRef.current = '';
     setModalPosition(position);
@@ -498,6 +728,7 @@ function FloatingToolbar() {
 
   const handleOpenQuickAsk = () => {
     setIsPageAction(false);
+    setIsLinkAction(false);
     pageActionCacheRef.current = {};
     extractedArticleRef.current = '';
     setModalPosition(position);
@@ -531,8 +762,13 @@ function FloatingToolbar() {
     const outputOption = t.outputLanguages?.find((l) => l.code === normalizedOutput) || t.targetLanguages.find((l) => l.code === normalizedOutput);
     const outputLang = outputOption ? outputOption.label : normalizedOutput;
 
+    let textForQuickAsk = selectedText;
+    if (isLinkActionRef.current && currentLinkUrlRef.current) {
+      textForQuickAsk = linkArticleCacheRef.current[currentLinkUrlRef.current] || currentLinkUrlRef.current;
+    }
+
     const outputClean = stripFlagEmoji(outputLang);
-    const finalPrompt = t.quickAskPrompt(selectedText, q, webSearchActive, outputClean);
+    const finalPrompt = t.quickAskPrompt(textForQuickAsk, q, webSearchActive, outputClean);
 
     chrome.runtime.sendMessage({
       action: 'ASK_AI',
@@ -791,7 +1027,7 @@ function FloatingToolbar() {
     <>
       {position && !showModal && (
         <div
-          className="lightning-toolbar absolute z-[2147483647] flex items-center bg-white rounded-full px-2.5 py-1 gap-1 animate-fade-in-up select-none"
+          className="lightning-toolbar absolute z-[2147483647] pointer-events-auto flex items-center bg-white rounded-full px-2.5 py-1 gap-1 animate-fade-in-up select-none"
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
@@ -826,6 +1062,38 @@ function FloatingToolbar() {
               </div>
             );
           })}
+
+          {/* Smart Link Action Button when a URL is detected */}
+          {detectedUrl && (
+            <div className="relative group flex items-center justify-center">
+              <button
+                onClick={() => {
+                  const pageActions = (settings?.pageActions && settings.pageActions.length > 0)
+                    ? settings.pageActions
+                    : DEFAULT_PAGE_ACTIONS;
+                  const linkAction = pageActions.find(a => a.id === 'summarize-link') || {
+                    id: 'summarize-link',
+                    label: t.actionSummarizeLink,
+                    icon: '🔗',
+                    prompt: '',
+                    scene: 'reading',
+                    isDefault: true,
+                  };
+                  triggerLinkActionDirectly(linkAction, detectedUrl, position || undefined);
+                }}
+                className="h-8 px-2 flex items-center justify-center gap-1 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 transition-colors cursor-pointer border border-blue-200/80"
+                aria-label={t.actionSummarizeLink}
+              >
+                <span className="text-xs">🔗</span>
+                <span className="text-xs font-semibold whitespace-nowrap">{t.actionSummarizeLink}</span>
+              </button>
+
+              <div className="lightning-tooltip absolute -top-9 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-50">
+                <span>{t.actionSummarizeLink}</span>
+                <div className="lightning-tooltip-arrow absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+              </div>
+            </div>
+          )}
 
           {/* Always Visible More Button (...) */}
           <div className="relative flex items-center justify-center">
@@ -982,7 +1250,7 @@ function FloatingToolbar() {
       {/* RESULT / QUICK ASK MODAL */}
       {showModal && modalPosition && activeAction && (
         <div 
-          className={`absolute z-[2147483647] ${isDragging ? 'cursor-grabbing select-none' : 'animate-fade-in-up'}`}
+          className={`absolute z-[2147483647] pointer-events-auto ${isDragging ? 'cursor-grabbing select-none' : 'animate-fade-in-up'}`}
           style={{
             left: `${Math.min(Math.max(225, modalPosition.x), window.innerWidth + window.scrollX - 225)}px`,
             top: `${modalPosition.y + 36}px`,
@@ -1055,7 +1323,7 @@ function FloatingToolbar() {
               <div className="px-3.5 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center">
                 <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs gap-1 overflow-x-auto">
                   {((settings?.pageActions && settings.pageActions.length > 0) ? settings.pageActions : DEFAULT_PAGE_ACTIONS)
-                    .filter(pa => pa.enabled !== false)
+                    .filter(pa => pa.enabled !== false && pa.id !== 'summarize-link')
                     .map((pa) => {
                     const isSelected = activeAction.id === pa.id;
                     const label = pa.isDefault
@@ -1155,7 +1423,30 @@ function FloatingToolbar() {
                 fontSize: getFontSizeCss(settings?.fontSize),
               }}
             >
-              {isGenerating && !aiResponse ? (
+              {isLoadingLinkContent ? (
+                <div className="py-8 flex flex-col items-center justify-center text-center gap-3">
+                  <div className="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-700">{t.fetchingLinkContent}</p>
+                    <p className="text-[11px] font-mono text-slate-400 truncate max-w-[300px]">{currentLinkUrl}</p>
+                  </div>
+                </div>
+              ) : linkFetchError ? (
+                <div className="py-6 flex flex-col items-center justify-center text-center gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-rose-600">{linkFetchError}</p>
+                    <p className="text-[11px] font-mono text-slate-400 truncate max-w-[300px]">{currentLinkUrl}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.open(currentLinkUrl, '_blank', 'noopener,noreferrer')}
+                    className="mt-1 px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>↗</span> {t.openLinkInNewTab}
+                  </button>
+                </div>
+              ) : isGenerating && !aiResponse ? (
                 <div className="text-slate-400 text-xs italic flex items-center gap-2">
                   <span className="inline-block w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
                   <span>{t.thinking}</span>
@@ -1167,8 +1458,8 @@ function FloatingToolbar() {
             
             {/* Sleek Icon-Only Footer */}
             <div className="px-3 py-2 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs">
-              <span className="text-[11px] text-slate-400 truncate max-w-[200px]">
-                {selectedText}
+              <span className="text-[11px] text-slate-400 truncate max-w-[200px]" title={isLinkAction ? currentLinkUrl : selectedText}>
+                {isLinkAction ? `🔗 ${normalizeDomain(currentLinkUrl)}` : selectedText}
               </span>
 
               {/* Compact Icon Action Buttons */}
@@ -1220,14 +1511,22 @@ function FloatingToolbar() {
                   <div className="relative group flex items-center justify-center">
                     <button 
                       onClick={() => {
-                        if (isPageAction) {
+                        if (isLinkAction) {
+                          linkActionCacheRef.current[activeAction.id] = '';
+                          const article = linkArticleCacheRef.current[currentLinkUrl];
+                          if (article) {
+                            startAI(activeAction, article);
+                          } else {
+                            triggerLinkActionDirectly(activeAction, currentLinkUrl);
+                          }
+                        } else if (isPageAction) {
                           pageActionCacheRef.current[activeAction.id] = '';
                           startAI(activeAction, extractedArticleRef.current || selectedText);
                         } else {
                           startAI(activeAction, selectedText);
                         }
                       }}
-                      disabled={isGenerating}
+                      disabled={isGenerating || isLoadingLinkContent}
                       className="p-1.5 text-slate-700 hover:bg-slate-200/60 disabled:opacity-40 rounded-lg transition-colors cursor-pointer border border-slate-300 hover:border-slate-800"
                       aria-label={t.retryBtn}
                     >
@@ -1270,7 +1569,7 @@ function init() {
   const shadowRoot = container.attachShadow({ mode: 'open' });
   
   const wrapper = document.createElement('div');
-  wrapper.style.pointerEvents = 'auto';
+  wrapper.style.pointerEvents = 'none';
   shadowRoot.appendChild(wrapper);
 
   const style = document.createElement('style');
