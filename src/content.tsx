@@ -146,6 +146,7 @@ function FloatingToolbar() {
     setIsDragging(false);
     dragStartRef.current = null;
     document.body.style.userSelect = '';
+    document.body.style.cursor = '';
     pageActionCacheRef.current = {};
     extractedArticleRef.current = '';
   };
@@ -153,6 +154,7 @@ function FloatingToolbar() {
   useEffect(() => {
     return () => {
       document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     };
   }, []);
 
@@ -767,9 +769,11 @@ function FloatingToolbar() {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       document.body.style.userSelect = '';
+      document.body.style.cursor = '';
     };
 
     document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
@@ -978,7 +982,7 @@ function FloatingToolbar() {
       {/* RESULT / QUICK ASK MODAL */}
       {showModal && modalPosition && activeAction && (
         <div 
-          className={`absolute z-[2147483647] ${isDragging ? '' : 'animate-fade-in-up'}`}
+          className={`absolute z-[2147483647] ${isDragging ? 'cursor-grabbing select-none' : 'animate-fade-in-up'}`}
           style={{
             left: `${Math.min(Math.max(225, modalPosition.x), window.innerWidth + window.scrollX - 225)}px`,
             top: `${modalPosition.y + 36}px`,
@@ -1000,8 +1004,8 @@ function FloatingToolbar() {
             {/* Header */}
             <div 
               onMouseDown={handleHeaderMouseDown}
-              className={`px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90 select-none ${
-                isDragging ? 'cursor-grabbing' : 'cursor-grab'
+              className={`lightning-modal-header px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90 select-none ${
+                isDragging ? 'is-dragging cursor-grabbing' : 'cursor-grab'
               }`}
               title={t.dragToMove}
             >
@@ -1048,7 +1052,7 @@ function FloatingToolbar() {
 
             {/* Page Actions Switcher Tab Bar */}
             {isPageAction && (
-              <div className="px-3.5 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center justify-between gap-2">
+              <div className="px-3.5 py-2 bg-slate-100/90 border-b border-slate-200/80 flex items-center">
                 <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs gap-1 overflow-x-auto">
                   {((settings?.pageActions && settings.pageActions.length > 0) ? settings.pageActions : DEFAULT_PAGE_ACTIONS)
                     .filter(pa => pa.enabled !== false)
@@ -1081,10 +1085,6 @@ function FloatingToolbar() {
                     );
                   })}
                 </div>
-
-                <span className="text-[11px] text-slate-400 font-medium shrink-0 hidden sm:inline">
-                  {t.navPageActions}
-                </span>
               </div>
             )}
 

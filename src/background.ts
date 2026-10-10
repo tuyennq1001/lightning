@@ -30,7 +30,7 @@ const updateContextMenus = (settings: UserSettings) => {
         if (chrome.runtime.lastError) { /* ignore */ }
       });
 
-      pageActions.filter((pAction) => pAction.enabled !== false).forEach((pAction) => {
+      pageActions.filter((pAction) => pAction.enabled !== false && pAction.id !== 'summarize-youtube').forEach((pAction) => {
         let label = pAction.label;
         if (pAction.isDefault) {
           if (pAction.id === 'summarize-page') label = t.actionSummarizePage;

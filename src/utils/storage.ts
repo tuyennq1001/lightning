@@ -249,7 +249,7 @@ function sanitizeDisabledWebsites(list?: string[]): string[] {
   return Array.from(set);
 }
 
-function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
+export function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
   if (!Array.isArray(actionsList) || actionsList.length === 0) {
     return DEFAULT_ACTIONS.map(a => ({
       ...a,
@@ -271,16 +271,18 @@ function sanitizeActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'
   });
 }
 
-function sanitizePageActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
+export function sanitizePageActions(actionsList?: CustomAction[], lang: LanguageCode = 'vi'): CustomAction[] {
   if (!Array.isArray(actionsList) || actionsList.length === 0) {
     return DEFAULT_PAGE_ACTIONS.map(a => ({
       ...a,
       prompt: getDefaultPrompt(a.id, lang) || a.prompt,
     }));
   }
-  const existingIds = new Set(actionsList.map(a => a.id));
-  const result: CustomAction[] = actionsList.map((a) => {
-    const isDef = a.isDefault || DEFAULT_PAGE_ACTIONS.some(d => d.id === a.id);
+  // Filter out deprecated YouTube action or any invalid items
+  const validActions = actionsList.filter(a => a && a.id && a.id !== 'summarize-youtube');
+  const existingIds = new Set(validActions.map(a => a.id));
+  const result: CustomAction[] = validActions.map((a) => {
+    const isDef = DEFAULT_PAGE_ACTIONS.some(d => d.id === a.id);
     const defAction = DEFAULT_PAGE_ACTIONS.find(d => d.id === a.id);
     let shortcut = a.shortcut !== undefined ? a.shortcut : (defAction?.shortcut || '');
     if (isDef) {
@@ -334,6 +336,18 @@ export const storage = {
       const activeApiKey = apiKeys[activeProvider] ?? saved.apiKey ?? '';
       const activeModelId = modelIds[activeProvider] ?? saved.modelId ?? '';
 
+      const sanitizedPageActions = sanitizePageActions(saved.pageActions, lang);
+
+      // Auto-cleanup stale/deprecated actions in storage if any were purged
+      if (Array.isArray(saved.pageActions) && saved.pageActions.some(a => a.id === 'summarize-youtube')) {
+        chrome.storage.local.set({
+          settings: {
+            ...saved,
+            pageActions: sanitizedPageActions,
+          }
+        }).catch(() => {});
+      }
+
       return {
         ...DEFAULT_SETTINGS,
         ...saved,
@@ -346,7 +360,7 @@ export const storage = {
         fontFamily: normalizeFontFamily(saved.fontFamily),
         fontSize: normalizeFontSize(saved.fontSize),
         actions: sanitizeActions(saved.actions, lang),
-        pageActions: sanitizePageActions(saved.pageActions, lang),
+        pageActions: sanitizedPageActions,
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
         quickAskEnabled: saved.quickAskEnabled !== undefined ? saved.quickAskEnabled : true,
       };

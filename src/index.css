@@ -26,6 +26,28 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3) !important;
 }
 
+/* Modal Header Drag Cursor Consistency */
+.lightning-modal-header {
+  cursor: grab !important;
+}
+
+.lightning-modal-header * {
+  cursor: grab !important;
+}
+
+.lightning-modal-header.is-dragging,
+.lightning-modal-header.is-dragging * {
+  cursor: grabbing !important;
+}
+
+/* Interactive Elements inside Header Retain Pointer */
+.lightning-modal-header button,
+.lightning-modal-header select,
+.lightning-modal-header input,
+.lightning-modal-header a {
+  cursor: pointer !important;
+}
+
 /* Precise Centering for Tooltips and Arrow Pointer in Shadow DOM */
 .lightning-tooltip {
   left: 50% !important;
