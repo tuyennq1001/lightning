@@ -72,6 +72,9 @@ export function getFontSizeCss(size?: string): string {
   return normalizeFontSize(size);
 }
 
+export type ModifierKey = 'alt' | 'ctrl' | 'shift';
+export type SelectTriggerMode = 'always' | 'modifier';
+
 export interface UserSettings {
   apiKey: string;
   provider: AIProvider;
@@ -90,6 +93,12 @@ export interface UserSettings {
   disabledWebsites?: string[];
   fontFamily?: FontFamilyOption;
   fontSize?: FontSizeOption;
+
+  // Select-to-Action
+  selectToActionEnabled?: boolean;
+  selectTriggerMode?: SelectTriggerMode;
+  selectModifierKey?: ModifierKey;
+  defaultSelectionActionId?: string;
 }
 
 export const DEFAULT_PAGE_ACTIONS: CustomAction[] = [
@@ -183,6 +192,12 @@ export const DEFAULT_SETTINGS: UserSettings = {
   disabledWebsites: [],
   fontFamily: 'system',
   fontSize: '14px',
+
+  // Select-to-Action defaults
+  selectToActionEnabled: true,
+  selectTriggerMode: 'modifier',
+  selectModifierKey: 'alt',
+  defaultSelectionActionId: 'translate',
 };
 
 import { getDefaultPrompt, type LanguageCode } from './i18n.ts';
@@ -372,6 +387,10 @@ export const storage = {
         pageActions: sanitizedPageActions,
         disabledWebsites: sanitizeDisabledWebsites(saved.disabledWebsites),
         quickAskEnabled: saved.quickAskEnabled !== undefined ? saved.quickAskEnabled : true,
+        selectToActionEnabled: saved.selectToActionEnabled !== undefined ? saved.selectToActionEnabled : true,
+        selectTriggerMode: saved.selectTriggerMode || 'modifier',
+        selectModifierKey: saved.selectModifierKey || 'alt',
+        defaultSelectionActionId: saved.defaultSelectionActionId || 'translate',
       };
     } catch {
       return DEFAULT_SETTINGS;
@@ -456,6 +475,10 @@ export const storage = {
           actions: sanitizeActions(val.actions, lang),
           pageActions: sanitizePageActions(val.pageActions, lang),
           disabledWebsites: sanitizeDisabledWebsites(val.disabledWebsites),
+          selectToActionEnabled: val.selectToActionEnabled !== undefined ? val.selectToActionEnabled : true,
+          selectTriggerMode: val.selectTriggerMode || 'modifier',
+          selectModifierKey: val.selectModifierKey || 'alt',
+          defaultSelectionActionId: val.defaultSelectionActionId || 'translate',
         });
       }
     };

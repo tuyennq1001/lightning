@@ -160,6 +160,9 @@ function FloatingToolbar() {
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null);
   const [currentScene, setCurrentScene] = useState<'reading' | 'writing'>('reading');
 
+  // Select-to-Action state
+  const startAIRef = useRef<((action: CustomAction, text: string, overrideTargetLang?: string) => void) | null>(null);
+
   const settingsRef = useRef<UserSettings | null>(null);
   useEffect(() => {
     settingsRef.current = settings;
@@ -300,7 +303,6 @@ function FloatingToolbar() {
       setTimeout(() => {
         try {
           const curSettings = settingsRef.current;
-          if (curSettings && curSettings.showToolbar === false) return;
           if (curSettings && isDomainDisabled(window.location.hostname, curSettings.disabledWebsites)) return;
 
           let text = '';
@@ -361,16 +363,55 @@ function FloatingToolbar() {
             // Position EXACTLY at the cursor end point (where mouse released)
             const endX = e.pageX || (window.innerWidth / 2 + window.scrollX);
             const endY = e.pageY || (window.innerHeight / 2 + window.scrollY);
-
-            setPosition({
+            const targetPos = {
               x: Math.min(Math.max(120, endX), window.innerWidth + window.scrollX - 120),
               y: endY + 12, // Appear immediately below the cursor end
-            });
+            };
+
             setSelectedText(text);
             setTargetElement(activeElTarget);
             setCurrentScene(isWriting ? 'writing' : 'reading');
             setShowMoreMenu(false);
             setShowCloseMenu(false);
+
+            // Check if Select-to-Action should trigger
+            const selectToActionEnabled = curSettings?.selectToActionEnabled !== false;
+            let isSelectToActionTriggered = false;
+
+            if (selectToActionEnabled) {
+              const triggerMode = curSettings?.selectTriggerMode || 'modifier';
+              if (triggerMode === 'always') {
+                isSelectToActionTriggered = true;
+              } else if (triggerMode === 'modifier') {
+                const modKey = curSettings?.selectModifierKey || 'alt';
+                if (modKey === 'alt' && e.altKey) isSelectToActionTriggered = true;
+                else if (modKey === 'ctrl' && (e.ctrlKey || e.metaKey)) isSelectToActionTriggered = true;
+                else if (modKey === 'shift' && e.shiftKey) isSelectToActionTriggered = true;
+              }
+            }
+
+            if (isSelectToActionTriggered) {
+              const defaultActionId = curSettings?.defaultSelectionActionId || 'translate';
+              const defaultAction = curSettings?.actions?.find(a => a.id === defaultActionId && a.enabled !== false) 
+                || curSettings?.actions?.find(a => a.id === 'translate') 
+                || curSettings?.actions?.[0] 
+                || DEFAULT_ACTIONS[0];
+
+              setIsPageAction(false);
+              setIsLinkAction(false);
+              pageActionCacheRef.current = {};
+              extractedArticleRef.current = '';
+              setModalPosition(targetPos);
+              setActiveAction(defaultAction);
+              setIsQuickAskMode(false);
+              setShowModal(true);
+              setPosition(null);
+              startAIRef.current?.(defaultAction, text);
+            } else {
+              // Otherwise show toolbar if enabled
+              if (curSettings && curSettings.showToolbar === false) return;
+              setPosition(targetPos);
+            }
           } else {
             setPosition(null);
             setDetectedUrl(null);
@@ -729,6 +770,10 @@ function FloatingToolbar() {
     setShowMoreMenu(false);
     startAI(action, selectedText);
   };
+
+  useEffect(() => {
+    startAIRef.current = startAI;
+  });
 
   const handleOpenQuickAsk = () => {
     setIsPageAction(false);
