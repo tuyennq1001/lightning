@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Livia: Private AI Copilot & Web Assistant",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Your private AI copilot on every web page. Instant translate, summarize & rewrite with Gemini, Claude & GPT-4o. 100% Private BYOK.",
   "icons": {
     "16": "icons/icon16.png",

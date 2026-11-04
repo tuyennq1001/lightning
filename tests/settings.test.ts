@@ -38,4 +38,46 @@ describe('i18n Parity for Selection Features', () => {
       }
     }
   });
+
+  it('has translation keys for API Key Guide and Links across all languages', () => {
+    const requiredApiKeyKeys = [
+      'getKeyGemini',
+      'getKeyOpenAI',
+      'getKeyClaude',
+      'getKeyOpenRouter',
+      'guideGeminiBadge',
+      'guideGeminiTitle',
+      'guideGeminiDesc',
+      'guideStep1Title',
+      'guideStep1Desc',
+      'guideStep2Title',
+      'guideStep2Desc',
+      'guideStep3Title',
+      'guideStep3Desc',
+      'guideStep4Title',
+      'guideStep4Desc',
+      'getGeminiKeyNowBtn',
+      'otherProvidersKeyTitle',
+      'noApiKeyTitle',
+      'noApiKeyDesc',
+      'getFreeGeminiKeyBtn',
+      'openSettingsBtn',
+      'customModelBtn',
+      'selectFromDropdown',
+      'modelsLoadedSuccess',
+      'clearSearch',
+      'customModelPlaceholder',
+      'searchModelGemini',
+      'searchModelOpenAI',
+      'searchModelClaude',
+      'searchModelOpenRouter',
+    ] as const;
+
+    for (const lang of languages) {
+      const dict = translations[lang] as Record<string, any>;
+      for (const key of requiredApiKeyKeys) {
+        assert.ok(dict[key], `Missing translation key "${key}" for language "${lang}"`);
+      }
+    }
+  });
 });

@@ -1489,6 +1489,39 @@ function FloatingToolbar() {
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                   <span>{t.thinking}</span>
                 </div>
+              ) : aiResponse === t.errNoApiKey ? (
+                <div className="py-6 px-3 flex flex-col items-center justify-center text-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-2xl shadow-xs">
+                    🔑
+                  </div>
+                  <div className="space-y-1 max-w-sm">
+                    <h4 className="text-sm font-bold text-slate-900">{t.noApiKeyTitle}</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">{t.noApiKeyDesc}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <a
+                      href="https://aistudio.google.com/app/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="text-sm">⚡</span>
+                      <span>{t.getFreeGeminiKeyBtn}</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' }, () => {
+                          if (chrome.runtime.lastError) { /* ignore */ }
+                        });
+                      }}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>⚙️</span>
+                      <span>{t.openSettingsBtn}</span>
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <MarkdownRenderer content={aiResponse} isGenerating={isGenerating} />
               )}
@@ -1503,7 +1536,7 @@ function FloatingToolbar() {
               {/* Compact Icon Action Buttons */}
               <div className="flex items-center gap-1.5">
                 {/* Replace text in input/editor */}
-                {targetElement && !isGenerating && (
+                {targetElement && !isGenerating && aiResponse !== t.errNoApiKey && (
                   <div className="relative group flex items-center justify-center">
                     <button 
                       onClick={replaceText}
@@ -1522,27 +1555,29 @@ function FloatingToolbar() {
                 )}
 
                 {/* Copy Button */}
-                <div className="relative group flex items-center justify-center">
-                  <button 
-                    onClick={handleCopy}
-                    className="p-1.5 text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer border border-slate-300 hover:border-slate-800"
-                    aria-label={copied ? t.copiedBtn : t.copyBtn}
-                  >
-                    {copied ? (
-                      <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                      </svg>
-                    )}
-                  </button>
-                  <div className="absolute -top-8 right-0 hidden group-hover:flex items-center px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-30">
-                    {copied ? t.copiedBtn : t.copyBtn}
-                    <div className="absolute top-full right-2.5 border-4 border-transparent border-t-slate-900"></div>
+                {aiResponse !== t.errNoApiKey && (
+                  <div className="relative group flex items-center justify-center">
+                    <button 
+                      onClick={handleCopy}
+                      className="p-1.5 text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer border border-slate-300 hover:border-slate-800"
+                      aria-label={copied ? t.copiedBtn : t.copyBtn}
+                    >
+                      {copied ? (
+                        <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                        </svg>
+                      )}
+                    </button>
+                    <div className="absolute -top-8 right-0 hidden group-hover:flex items-center px-2 py-1 bg-slate-900 text-white text-[11px] font-medium rounded-lg shadow-lg whitespace-nowrap pointer-events-none z-30">
+                      {copied ? t.copiedBtn : t.copyBtn}
+                      <div className="absolute top-full right-2.5 border-4 border-transparent border-t-slate-900"></div>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Retry Button */}
                 {!isQuickAskMode && (

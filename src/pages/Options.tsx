@@ -9,6 +9,7 @@ import {
   type SelectTriggerMode,
   DEFAULT_ACTIONS, 
   DEFAULT_PAGE_ACTIONS,
+  DEFAULT_PROVIDER_MODELS,
   normalizeDomain, 
   getDefaultOutputLanguage,
   getFontFamilyCss,
@@ -53,6 +54,84 @@ const ChevronDownIcon = () => (
   </div>
 );
 
+// Exclude non-text, music, TTS, image and embedding models
+function isTextGenerationModel(id: string, name: string): boolean {
+  const lower = `${id} ${name}`.toLowerCase();
+  if (
+    lower.includes('lyria') ||
+    lower.includes('tts') ||
+    lower.includes('audio') ||
+    lower.includes('image') ||
+    lower.includes('imagen') ||
+    lower.includes('banana') ||
+    lower.includes('embedding') ||
+    lower.includes('embed') ||
+    lower.includes('aqa') ||
+    lower.includes('realtime') ||
+    lower.includes('transcribe') ||
+    lower.includes('whisper') ||
+    lower.includes('dall-e')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+// Extract version numbers for descending sorting (e.g. 4.0 > 3.8 > 2.5 > 2.0 > 1.5)
+// Strip 4-digit years (e.g. 2024, 2025, 2026) and timestamps (20241022) so they don't corrupt version comparison
+function extractModelVersion(id: string): number[] {
+  const cleaned = id
+    .replace(/\b20\d{2}(?:\d{4})?\b/g, '')
+    .replace(/[-_]20\d{2}[-_]/g, '-');
+  const match = cleaned.match(/(\d+(?:\.\d+)*)/);
+  if (match) {
+    return match[1].split('.').map((num) => parseInt(num, 10));
+  }
+  return [0];
+}
+
+function sortModelsByVersionDescending(models: { id: string; name: string }[]): { id: string; name: string }[] {
+  return [...models].sort((a, b) => {
+    // Tier 1: Models with 'latest' are prioritized right at the very top (e.g. flash-latest, flash-lite-latest)
+    const aIsLatest = a.id.toLowerCase().includes('latest') || a.name.toLowerCase().includes('latest');
+    const bIsLatest = b.id.toLowerCase().includes('latest') || b.name.toLowerCase().includes('latest');
+    if (aIsLatest !== bIsLatest) {
+      return aIsLatest ? -1 : 1;
+    }
+    if (aIsLatest && bIsLatest) {
+      // Within latest: prioritize Flash over Pro, then alphabetical
+      const aIsFlash = a.id.toLowerCase().includes('flash');
+      const bIsFlash = b.id.toLowerCase().includes('flash');
+      if (aIsFlash !== bIsFlash) return aIsFlash ? -1 : 1;
+      return a.id.localeCompare(b.id);
+    }
+
+    // Tier 2: Sort by version number descending (e.g. 4.0 > 3.8 > 2.5 > 2.0 > 1.5)
+    const vA = extractModelVersion(a.id);
+    const vB = extractModelVersion(b.id);
+    const len = Math.max(vA.length, vB.length);
+    for (let i = 0; i < len; i++) {
+      const numA = vA[i] ?? 0;
+      const numB = vB[i] ?? 0;
+      if (numA !== numB) {
+        return numB - numA; // Descending
+      }
+    }
+
+    // Tier 3: Prefer Flash over Pro, stable over preview/exp
+    const aIsFlash = a.id.toLowerCase().includes('flash');
+    const bIsFlash = b.id.toLowerCase().includes('flash');
+    if (aIsFlash !== bIsFlash) return aIsFlash ? -1 : 1;
+
+    const aIsPreview = a.id.includes('preview') || a.id.includes('exp');
+    const bIsPreview = b.id.includes('preview') || b.id.includes('exp');
+    if (aIsPreview !== bIsPreview) {
+      return aIsPreview ? 1 : -1;
+    }
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export default function Options() {
   const { settings, updateSettings, loading } = useSettings();
   
@@ -72,8 +151,12 @@ export default function Options() {
   const [modelId, setModelId] = useState('');
   const [apiKeys, setApiKeys] = useState<Partial<Record<UserSettings['provider'], string>>>({});
   const [modelIds, setModelIds] = useState<Partial<Record<UserSettings['provider'], string>>>({});
+  const [cachedModels, setCachedModels] = useState<Partial<Record<UserSettings['provider'], { id: string; name: string }[]>>>(DEFAULT_PROVIDER_MODELS);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
-  const [isManualModelInput, setIsManualModelInput] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCustomModelInput, setIsCustomModelInput] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [sourceLanguage, setSourceLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('Vietnamese');
   const [outputLanguage, setOutputLanguage] = useState('Vietnamese');
@@ -123,6 +206,21 @@ export default function Options() {
     return models.filter((m) => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query));
   }, [models, modelSearchQuery]);
 
+  const selectedModel = useMemo(() => {
+    return models.find((m) => m.id === modelId);
+  }, [models, modelId]);
+
+  // Close combobox dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (comboboxRef.current && !comboboxRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const conflictingAction = useMemo(() => {
     if (!actionShortcut.trim()) return null;
     const allActions = [...actions, ...pageActions];
@@ -152,11 +250,18 @@ export default function Options() {
       const activeProv = settings.provider || 'gemini';
       const storedApiKeys = settings.apiKeys || {};
       const storedModelIds = settings.modelIds || {};
+      const storedCachedModels = (settings.cachedModels || DEFAULT_PROVIDER_MODELS) as Record<string, { id: string; name: string }[]>;
+      setCachedModels(storedCachedModels);
+      const provModels = sortModelsByVersionDescending(
+        (storedCachedModels[activeProv] || DEFAULT_PROVIDER_MODELS[activeProv] || []).filter(m => isTextGenerationModel(m.id, m.name))
+      );
+      setModels(provModels);
       setApiKeys(storedApiKeys);
       setModelIds(storedModelIds);
       setProvider(activeProv);
       setLocalKey(storedApiKeys[activeProv] || settings.apiKey || '');
-      setModelId(storedModelIds[activeProv] || settings.modelId || '');
+      const activeModel = storedModelIds[activeProv] || settings.modelId || (provModels.length > 0 ? provModels[0].id : '');
+      setModelId(activeModel);
       setSourceLanguage(settings.sourceLanguage || 'auto');
       setTargetLanguage(settings.targetLanguage || 'Vietnamese');
       setOutputLanguage(settings.outputLanguage || getDefaultOutputLanguage((settings.appLanguage as LanguageCode) || 'vi'));
@@ -264,10 +369,15 @@ export default function Options() {
 
     setProvider(newProvider);
     setLocalKey(updatedApiKeys[newProvider] || '');
-    setModelId(updatedModelIds[newProvider] || '');
-    setModels([]);
+    const currentProvModels = sortModelsByVersionDescending(
+      (cachedModels[newProvider] || DEFAULT_PROVIDER_MODELS[newProvider] || []).filter(m => isTextGenerationModel(m.id, m.name))
+    );
+    setModels(currentProvModels);
+    const nextModelId = updatedModelIds[newProvider] || (currentProvModels.length > 0 ? currentProvModels[0].id : '');
+    setModelId(nextModelId);
     setModelSearchQuery('');
-    setIsManualModelInput(false);
+    setIsCustomModelInput(false);
+    setIsDropdownOpen(false);
     setModelError('');
   };
 
@@ -284,30 +394,33 @@ export default function Options() {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(localKey.trim())}`);
         if (!res.ok) throw new Error('API Key không hợp lệ hoặc lỗi mạng');
         const data = await res.json();
-        loadedModels = (data.models || [])
+        const rawModels = (data.models || [])
           .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
           .map((m: any) => ({
             id: m.name.replace('models/', ''),
             name: m.displayName || m.name.replace('models/', ''),
-          }));
+          }))
+          .filter((m: any) => m.id.toLowerCase().startsWith('gemini-') && isTextGenerationModel(m.id, m.name));
+        loadedModels = sortModelsByVersionDescending(rawModels);
       } else if (provider === 'openai') {
         const res = await fetch('https://api.openai.com/v1/models', {
           headers: { Authorization: `Bearer ${localKey.trim()}` }
         });
         if (!res.ok) throw new Error('API Key không hợp lệ hoặc lỗi mạng');
         const data = await res.json();
-        loadedModels = (data.data || [])
-          .filter((m: any) => m.id.startsWith('gpt'))
+        const rawModels = (data.data || [])
+          .filter((m: any) => m.id.startsWith('gpt') || m.id.startsWith('o1') || m.id.startsWith('o3') || m.id.startsWith('chatgpt'))
+          .filter((m: any) => isTextGenerationModel(m.id, m.id))
           .map((m: any) => ({
             id: m.id,
             name: m.id,
           }));
-        loadedModels.sort((a, b) => b.id.localeCompare(a.id));
+        loadedModels = sortModelsByVersionDescending(rawModels);
       } else if (provider === 'claude') {
         loadedModels = [
-          { id: 'claude-3-5-sonnet-20240620', name: 'Claude 3.5 Sonnet' },
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+          { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
           { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
-          { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet' },
           { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
         ];
       } else if (provider === 'openrouter') {
@@ -329,27 +442,34 @@ export default function Options() {
         });
       }
       
-      setModels(loadedModels);
-      
       if (loadedModels.length > 0) {
-        let defaultModel = loadedModels[0].id;
-        if (provider === 'gemini') {
-          const bestModel = loadedModels.find(m => m.id === 'gemini-flash-lite-latest' || m.id === 'gemini-2.0-flash-lite' || m.id === 'gemini-1.5-flash-8b') 
-                         || loadedModels.find(m => m.id === 'gemini-1.5-flash' || m.id === 'gemini-1.5-flash-latest' || m.id === 'gemini-2.0-flash')
-                         || loadedModels.find(m => m.id.includes('flash'))
-                         || loadedModels.find(m => m.id.includes('pro'));
-          if (bestModel) defaultModel = bestModel.id;
-        } else if (provider === 'openai') {
-          const bestModel = loadedModels.find(m => m.id === 'gpt-4o' || m.id === 'gpt-4-turbo');
-          if (bestModel) defaultModel = bestModel.id;
-        } else if (provider === 'openrouter') {
-          if (modelId && loadedModels.some(m => m.id === modelId)) {
-            defaultModel = modelId;
-          } else {
-            defaultModel = loadedModels[0].id;
-          }
+        setModels(loadedModels);
+        const updatedCached = {
+          ...cachedModels,
+          [provider]: loadedModels,
+        };
+        setCachedModels(updatedCached);
+
+        // Keep current selection if valid in newly fetched list, otherwise pick the top latest model
+        let targetModel = modelId;
+        if (!targetModel || !loadedModels.some((m) => m.id === targetModel)) {
+          targetModel = loadedModels[0].id;
+          setModelId(targetModel);
         }
-        setModelId(defaultModel);
+
+        const updatedModelIds = { ...modelIds, [provider]: targetModel };
+        setModelIds(updatedModelIds);
+
+        // Save updated cache and model to storage immediately
+        await updateSettings({
+          cachedModels: updatedCached,
+          modelIds: updatedModelIds,
+          modelId: targetModel,
+        });
+
+        // Open pulldown dropdown so user can immediately browse & search!
+        setIsDropdownOpen(true);
+        setIsCustomModelInput(false);
       } else {
         setModelError(t.noCompatibleModels);
       }
@@ -394,6 +514,7 @@ export default function Options() {
       modelId: modelId.trim(), 
       apiKeys: updatedApiKeys,
       modelIds: updatedModelIds,
+      cachedModels,
       sourceLanguage, 
       targetLanguage,
       outputLanguage: outputLangToSave,
@@ -863,7 +984,7 @@ export default function Options() {
 
         {/* Footer info */}
         <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400">
-          Livia v1.1.0 • 100% Private BYOK
+          Livia v1.3.0 • 100% Private BYOK
         </div>
       </aside>
 
@@ -1771,7 +1892,47 @@ export default function Options() {
                   value={localKey}
                   onChange={(e) => setLocalKey(e.target.value)}
                 />
-                <p className="text-[11px] text-slate-400 mt-1.5">{t.apiKeyNote}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-2">
+                  <p className="text-[11px] text-slate-400">{t.apiKeyNote}</p>
+                  {provider === 'gemini' ? (
+                    <a
+                      href="https://aistudio.google.com/app/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 hover:from-emerald-500/20 hover:to-teal-500/20 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-500/30 transition-all cursor-pointer shadow-2xs group"
+                    >
+                      <span className="text-emerald-600">⚡</span>
+                      <span>{t.getKeyGemini}</span>
+                    </a>
+                  ) : provider === 'openai' ? (
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                      <span>{t.getKeyOpenAI}</span>
+                    </a>
+                  ) : provider === 'claude' ? (
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                      <span>{t.getKeyClaude}</span>
+                    </a>
+                  ) : (
+                    <a
+                      href="https://openrouter.ai/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                      <span>{t.getKeyOpenRouter}</span>
+                    </a>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1780,13 +1941,21 @@ export default function Options() {
                     {t.modelLabel}
                   </label>
                   <div className="flex items-center gap-2">
-                    {models.length > 0 && (
+                    {isCustomModelInput ? (
                       <button
                         type="button"
-                        onClick={() => setIsManualModelInput(!isManualModelInput)}
+                        onClick={() => setIsCustomModelInput(false)}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2.5 py-1 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                      >
+                        {t.selectFromDropdown}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomModelInput(true)}
                         className="text-xs text-slate-600 hover:text-slate-900 font-medium px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
                       >
-                        {isManualModelInput ? t.selectFromList : t.enterModelManually}
+                        {t.enterModelManually}
                       </button>
                     )}
                     <button
@@ -1800,55 +1969,183 @@ export default function Options() {
                   </div>
                 </div>
 
-                {models.length > 0 && !isManualModelInput ? (
-                  <div className="space-y-2">
-                    {/* Search Filter for models */}
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
-                        🔍
+                {isCustomModelInput ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                      placeholder={provider === 'openrouter' ? 'meta-llama/llama-3.3-70b-instruct:free' : t.customModelPlaceholder}
+                      value={modelId}
+                      onChange={(e) => setModelId(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="relative" ref={comboboxRef}>
+                    {/* Combobox Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDropdownOpen(!isDropdownOpen);
+                        if (!isDropdownOpen) {
+                          setTimeout(() => searchInputRef.current?.focus(), 50);
+                        }
+                      }}
+                      className={`w-full pl-3.5 pr-10 py-2.5 bg-slate-50 hover:bg-white border rounded-xl text-left flex items-center justify-between transition cursor-pointer shadow-2xs ${
+                        isDropdownOpen
+                          ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            modelId.includes(':free') || modelId.toLowerCase().includes('free')
+                              ? 'bg-emerald-500'
+                              : modelId.includes('flash')
+                              ? 'bg-amber-500'
+                              : 'bg-blue-500'
+                          }`}
+                        ></span>
+                        <div className="truncate">
+                          <span className="text-sm font-semibold text-slate-800 truncate">
+                            {selectedModel?.name || modelId || 'Chọn model...'}
+                          </span>
+                        </div>
                       </div>
-                      <input
-                        type="text"
-                        value={modelSearchQuery}
-                        onChange={(e) => setModelSearchQuery(e.target.value)}
-                        placeholder={t.searchModelPlaceholder}
-                        className="w-full pl-8 pr-16 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                      />
-                      <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[11px] text-slate-400">
-                        {filteredModels.length}/{models.length}
-                      </span>
-                    </div>
-
-                    {/* Select Dropdown */}
-                    {filteredModels.length > 0 ? (
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition cursor-pointer"
-                          value={modelId}
-                          onChange={(e) => setModelId(e.target.value)}
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-blue-600' : ''}`}
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
                         >
-                          {filteredModels.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.name} ({m.id})
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDownIcon />
+                          <path
+                            fillRule="evenodd"
+                            d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
                       </div>
-                    ) : (
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 text-center">
-                        {t.noMatchingModels}
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-fade-in-up">
+                        {/* Search Input Box with clear 'x' button */}
+                        <div className="p-2 border-b border-slate-100 bg-slate-50/70">
+                          <div className="relative flex items-center">
+                            <span className="absolute left-3 text-slate-400 text-xs pointer-events-none">🔍</span>
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              value={modelSearchQuery}
+                              onChange={(e) => setModelSearchQuery(e.target.value)}
+                              placeholder={
+                                provider === 'gemini'
+                                  ? t.searchModelGemini
+                                  : provider === 'openai'
+                                  ? t.searchModelOpenAI
+                                  : provider === 'claude'
+                                  ? t.searchModelClaude
+                                  : t.searchModelOpenRouter
+                              }
+                              className="w-full pl-8 pr-16 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                              autoFocus
+                            />
+                            {modelSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setModelSearchQuery('');
+                                  searchInputRef.current?.focus();
+                                }}
+                                className="absolute right-10 text-slate-400 hover:text-slate-600 p-1 rounded-md text-xs cursor-pointer"
+                                title={t.clearSearch}
+                              >
+                                ✕
+                              </button>
+                            )}
+                            <span className="absolute right-3 text-[11px] font-mono text-slate-400 pointer-events-none">
+                              {filteredModels.length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* List of Models */}
+                        <div className="max-h-64 overflow-y-auto p-1.5 space-y-0.5">
+                          {filteredModels.length > 0 ? (
+                            filteredModels.map((m) => {
+                              const isSelected = m.id === modelId;
+                              const isFree = m.id.includes(':free') || m.id.toLowerCase().includes('free');
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setModelId(m.id);
+                                    setIsDropdownOpen(false);
+                                    setModelSearchQuery('');
+                                  }}
+                                  className={`w-full px-3 py-2 rounded-xl text-left flex items-center justify-between transition-colors cursor-pointer text-xs ${
+                                    isSelected
+                                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                                      : 'hover:bg-slate-100 text-slate-800'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 truncate">
+                                    <span
+                                      className={`w-2 h-2 rounded-full shrink-0 ${
+                                        isSelected
+                                          ? 'bg-white'
+                                          : isFree
+                                          ? 'bg-emerald-500'
+                                          : m.id.includes('flash')
+                                          ? 'bg-amber-500'
+                                          : 'bg-blue-500'
+                                      }`}
+                                    ></span>
+                                    <span className="truncate font-medium text-xs">
+                                      {m.name || m.id}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                    {isFree && (
+                                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                        isSelected ? 'bg-blue-700 text-white' : 'bg-emerald-100 text-emerald-700'
+                                      }`}>
+                                        Free
+                                      </span>
+                                    )}
+                                    {isSelected && <span className="text-sm font-bold">✓</span>}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="py-6 px-3 text-center text-xs text-slate-400">
+                              <p>{t.noMatchingModels}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dropdown Footer: Option to enter custom model ID */}
+                        <div className="p-2 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCustomModelInput(true);
+                              setIsDropdownOpen(false);
+                            }}
+                            className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold px-2 py-1 hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                          >
+                            {t.customModelBtn}
+                          </button>
+                          <span className="text-[11px] text-slate-400 font-mono">
+                            {models.length} models
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <input
-                    type="text"
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
-                    placeholder={provider === 'openrouter' ? 'meta-llama/llama-3.3-70b-instruct:free' : t.modelPlaceholder}
-                    value={modelId}
-                    onChange={(e) => setModelId(e.target.value)}
-                  />
                 )}
                 {modelError && (
                   <p className="text-xs text-rose-600 font-medium mt-1.5">{modelError}</p>
@@ -1875,6 +2172,106 @@ export default function Options() {
               <p className="text-sm text-slate-500 mt-1">
                 {t.helpDesc}
               </p>
+            </div>
+
+            {/* Featured: How to get Google API Key for Free */}
+            <div className="bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-blue-500/5 rounded-2xl border-2 border-emerald-500/30 p-6 shadow-xs space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-emerald-500/15">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-xs text-lg shrink-0">
+                    🔑
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900">{t.guideGeminiTitle}</h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        {t.guideGeminiBadge}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5">{t.guideGeminiDesc}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Steps Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 bg-white/80 backdrop-blur-xs rounded-xl border border-emerald-500/20 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] shrink-0">1</span>
+                    <span>{t.guideStep1Title}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">{t.guideStep1Desc}</p>
+                </div>
+
+                <div className="p-3.5 bg-white/80 backdrop-blur-xs rounded-xl border border-emerald-500/20 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] shrink-0">2</span>
+                    <span>{t.guideStep2Title}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">{t.guideStep2Desc}</p>
+                </div>
+
+                <div className="p-3.5 bg-white/80 backdrop-blur-xs rounded-xl border border-emerald-500/20 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] shrink-0">3</span>
+                    <span>{t.guideStep3Title}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">{t.guideStep3Desc}</p>
+                </div>
+
+                <div className="p-3.5 bg-white/80 backdrop-blur-xs rounded-xl border border-emerald-500/20 shadow-2xs space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] shrink-0">4</span>
+                    <span>{t.guideStep4Title}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">{t.guideStep4Desc}</p>
+                </div>
+              </div>
+
+              {/* Action Button & Sub-links */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-500/15">
+                <a
+                  href="https://aistudio.google.com/app/api-keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer group"
+                >
+                  <span className="text-sm">⚡</span>
+                  <span>{t.getGeminiKeyNowBtn}</span>
+                </a>
+
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="hidden sm:inline">{t.otherProvidersKeyTitle}</span>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                    >
+                      OpenAI ↗
+                    </a>
+                    <span>•</span>
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                    >
+                      Claude ↗
+                    </a>
+                    <span>•</span>
+                    <a
+                      href="https://openrouter.ai/keys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                    >
+                      OpenRouter ↗
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Shortcuts & Guide */}

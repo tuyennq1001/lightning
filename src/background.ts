@@ -105,6 +105,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+  if (message.action === 'OPEN_OPTIONS') {
+    chrome.runtime.openOptionsPage();
+    return true;
+  }
   if (message.action === 'ASK_AI') {
     handleAIRequest(message.messages, sender.tab?.id, { webSearch: Boolean(message.webSearch) });
     return true;
