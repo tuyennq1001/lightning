@@ -6,7 +6,7 @@ describe('sanitizePageActions', () => {
   it('returns default page actions when input is empty or undefined', () => {
     const result = sanitizePageActions([]);
     assert.strictEqual(result.length, DEFAULT_PAGE_ACTIONS.length);
-    assert.deepStrictEqual(result.map(a => a.id), ['summarize-page', 'simplify-page']);
+    assert.deepStrictEqual(result.map(a => a.id), ['summarize-page', 'simplify-page', 'summarize-link']);
   });
 
   it('filters out obsolete summarize-youtube action from stored actions', () => {
@@ -30,6 +30,15 @@ describe('sanitizePageActions', () => {
         shortcut: 'Alt+P',
       },
       {
+        id: 'summarize-link',
+        label: 'Tóm tắt URL',
+        icon: '🔗',
+        prompt: 'test',
+        scene: 'reading',
+        isDefault: true,
+        shortcut: '',
+      },
+      {
         id: 'summarize-youtube',
         label: 'Tóm tắt video YouTube',
         icon: '⚡',
@@ -42,8 +51,8 @@ describe('sanitizePageActions', () => {
 
     const result = sanitizePageActions(legacyActions);
     assert.strictEqual(result.some(a => a.id === 'summarize-youtube'), false);
-    assert.strictEqual(result.length, 2);
-    assert.deepStrictEqual(result.map(a => a.id), ['summarize-page', 'simplify-page']);
+    assert.strictEqual(result.length, 3);
+    assert.deepStrictEqual(result.map(a => a.id), ['summarize-page', 'simplify-page', 'summarize-link']);
   });
 
   it('preserves valid custom page actions while filtering out youtube actions', () => {

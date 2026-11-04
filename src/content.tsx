@@ -16,6 +16,10 @@ import {
 import { getT, getDefaultPrompt, stripFlagEmoji, type LanguageCode } from './utils/i18n';
 import MarkdownRenderer from './components/MarkdownRenderer';
 
+function getRootContainer(): HTMLElement | null {
+  return document.getElementById('livia-ai-root') || document.getElementById('lightning-ai-root');
+}
+
 function isValidHttpUrl(str: string): boolean {
   if (!str) return false;
   const trimmed = str.trim();
@@ -251,7 +255,7 @@ function FloatingToolbar() {
   // Dismiss popup and toolbar when clicking outside
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
-      const container = document.getElementById('lightning-ai-root');
+      const container = getRootContainer();
       if (container && container.contains(e.target as Node)) return;
       // Clicked outside, hide current modal if any
       handleCloseModal();
@@ -267,7 +271,7 @@ function FloatingToolbar() {
   // Handle right-click contextmenu: save position and close toolbar so it doesn't overlap native context menu
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
-      const container = document.getElementById('lightning-ai-root');
+      const container = getRootContainer();
       if (container && container.contains(e.target as Node)) return;
 
       lastContextMenuPosRef.current = {
@@ -290,7 +294,7 @@ function FloatingToolbar() {
       if (e.button !== 0) return;
 
       // Don't trigger if clicking inside our own UI
-      const container = document.getElementById('lightning-ai-root');
+      const container = getRootContainer();
       if (container && container.contains(e.target as Node)) return;
 
       setTimeout(() => {
@@ -833,7 +837,7 @@ function FloatingToolbar() {
       }
 
       // Ignore selection actions if user is interacting inside our own shadow DOM / root
-      const container = document.getElementById('lightning-ai-root');
+      const container = getRootContainer();
       if (container && container.contains(e.target as Node)) return;
 
       // 2. Check Selection Actions (requires text selection)
@@ -1027,13 +1031,11 @@ function FloatingToolbar() {
     <>
       {position && !showModal && (
         <div
-          className="lightning-toolbar absolute z-[2147483647] pointer-events-auto flex items-center bg-white rounded-full px-2.5 py-1 gap-1 animate-fade-in-up select-none"
+          className="livia-toolbar lightning-toolbar absolute z-[2147483647] pointer-events-auto flex items-center rounded-full px-3 py-1 gap-1.5 animate-fade-in-up select-none"
           style={{
             left: `${position.x}px`,
             top: `${position.y}px`,
             transform: 'translateX(-50%)',
-            border: '2px solid #0f172a',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
           }}
         >
           {/* Pinned Action Buttons on Main Bar */}
@@ -1113,18 +1115,14 @@ function FloatingToolbar() {
               </svg>
             </button>
 
-            {/* Monica-style Action List Dropdown Menu with Pin Buttons */}
+            {/* Action List Dropdown Menu with Pin Buttons */}
             {showMoreMenu && (
               <div 
-                className="lightning-dropdown absolute top-full mt-2.5 left-1/2 -translate-x-1/2 bg-white rounded-2xl py-2 min-w-[240px] z-50 animate-fade-in-up divide-y divide-slate-100"
-                style={{
-                  border: '2px solid #0f172a',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
-                }}
+                className="livia-dropdown lightning-dropdown absolute top-full mt-2.5 left-1/2 -translate-x-1/2 rounded-2xl py-2 min-w-[240px] z-50 animate-fade-in-up divide-y divide-slate-100"
               >
                 <div className="px-3.5 py-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                   <span>{t.actionListTitle}</span>
-                  <span className="text-[10px] text-purple-600 font-semibold">{t.pinHeader}</span>
+                  <span className="text-[10px] text-emerald-600 font-semibold">{t.pinHeader}</span>
                 </div>
 
                 <div className="max-h-[300px] overflow-y-auto py-1">
@@ -1212,11 +1210,7 @@ function FloatingToolbar() {
             {/* Close Options Popover */}
             {showCloseMenu && (
               <div 
-                className="lightning-dropdown absolute top-full mt-2.5 right-0 bg-white rounded-2xl py-1.5 min-w-[210px] z-50 animate-fade-in-up text-left shadow-2xl divide-y divide-slate-100"
-                style={{
-                  border: '2px solid #0f172a',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25)',
-                }}
+                className="livia-dropdown lightning-dropdown absolute top-full mt-2.5 right-0 rounded-2xl py-1.5 min-w-[210px] z-50 animate-fade-in-up text-left divide-y divide-slate-100"
               >
                 <div className="py-0.5">
                   <button
@@ -1260,19 +1254,18 @@ function FloatingToolbar() {
           }}
         >
           <div 
-            className="lightning-modal bg-white rounded-2xl w-full overflow-hidden flex flex-col max-h-[75vh]"
+            className="livia-modal lightning-modal bg-white rounded-2xl w-full overflow-hidden flex flex-col max-h-[75vh]"
             style={{
-              border: '2px solid #0f172a',
               boxShadow: isDragging 
                 ? '0 30px 60px -12px rgba(0, 0, 0, 0.45)' 
-                : '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+                : '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 25px 0 rgba(16, 185, 129, 0.2)',
               transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
             }}
           >
             {/* Header */}
             <div 
               onMouseDown={handleHeaderMouseDown}
-              className={`lightning-modal-header px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90 select-none ${
+              className={`livia-modal-header lightning-modal-header px-4 py-2.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/90 select-none ${
                 isDragging ? 'is-dragging cursor-grabbing' : 'cursor-grab'
               }`}
               title={t.dragToMove}
@@ -1290,7 +1283,7 @@ function FloatingToolbar() {
                     <select
                       value={settings?.targetLanguage === 'tiếng Việt' ? 'Vietnamese' : (settings?.targetLanguage || 'Vietnamese')}
                       onChange={(e) => handleTargetLanguageChange(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-blue-600 focus:outline-none cursor-pointer pr-1"
+                      className="bg-transparent text-xs font-bold text-emerald-700 focus:outline-none cursor-pointer pr-1"
                     >
                       {t.targetLanguages.map((lang) => (
                         <option key={lang.code} value={lang.code}>{lang.label}</option>
@@ -1303,9 +1296,9 @@ function FloatingToolbar() {
                   </span>
                 )}
 
-                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 text-[10px] text-blue-600 font-bold border border-blue-100">
-                  <img src={appIconUrl} alt="Lightning" className="w-3.5 h-3.5 rounded" />
-                  <span>Lightning</span>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-700 font-bold border border-emerald-500/25">
+                  <img src={appIconUrl} alt="Livia" className="w-3.5 h-3.5 rounded" />
+                  <span>Livia</span>
                 </div>
               </div>
 
@@ -1336,7 +1329,7 @@ function FloatingToolbar() {
                         onClick={() => handleSwitchPageActionTab(pa)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                           isSelected
-                            ? 'bg-blue-600 text-white shadow-xs font-bold'
+                            ? 'bg-emerald-600 text-white shadow-xs font-bold'
                             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                         }`}
                       >
@@ -1344,7 +1337,7 @@ function FloatingToolbar() {
                         <span>{label}</span>
                         {pa.shortcut && (
                           <kbd className={`px-1 py-0.2 text-[9px] font-mono rounded ${
-                            isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-500'
+                            isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-slate-100 text-slate-500'
                           }`}>
                             {pa.shortcut}
                           </kbd>
@@ -1447,8 +1440,8 @@ function FloatingToolbar() {
                   </button>
                 </div>
               ) : isGenerating && !aiResponse ? (
-                <div className="text-slate-400 text-xs italic flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+                <div className="text-emerald-700/80 text-xs italic flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                   <span>{t.thinking}</span>
                 </div>
               ) : (
@@ -1550,14 +1543,14 @@ function FloatingToolbar() {
 }
 
 function init() {
-  if (document.getElementById('lightning-ai-root')) return;
+  if (getRootContainer()) return;
   if (!document.body) {
     window.addEventListener('DOMContentLoaded', init, { once: true });
     return;
   }
 
   const container = document.createElement('div');
-  container.id = 'lightning-ai-root';
+  container.id = 'livia-ai-root';
   container.style.position = 'absolute';
   container.style.top = '0';
   container.style.left = '0';

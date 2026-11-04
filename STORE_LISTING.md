@@ -1,11 +1,11 @@
-# Chrome Web Store Listing Package & Instructions
+# Chrome Web Store Listing Package & Instructions: Livia AI
 
 Tài liệu này chứa toàn bộ nội dung đã được chuẩn hóa để bạn sao chép (copy & paste) trực tiếp vào **Chrome Web Store Developer Dashboard** ([chrome.google.com/webstore/devconsole](https://chrome.google.com/webstore/devconsole)).
 
 ---
 
 ## 1. Tab "Package" (Tải lên gói mở rộng)
-- **File nén tải lên**: `lightning-v1.0.0.zip` (nằm ngay tại thư mục gốc của dự án).
+- **File nén tải lên**: `livia-v1.1.0.zip` (hoặc chạy lệnh `npm run package` để tự động build và đóng gói).
 - Khi có bản cập nhật mới, chỉ cần chạy lệnh:
   ```bash
   npm run package
@@ -18,143 +18,100 @@ Tài liệu này chứa toàn bộ nội dung đã được chuẩn hóa để b
 ### Product Details (Chi tiết sản phẩm)
 - **Extension Name (Tên tiện ích)**:
   ```text
-  Lightning: All-in-One AI Assistant (BYOK)
+  Livia: Private AI Copilot & Web Assistant
   ```
-  *(Hoặc phiên bản tiếng Việt nếu chọn locale vi)*:
+  *(Phiên bản tiếng Việt nếu chọn locale vi)*:
   ```text
-  Lightning - Trợ lý AI Đa Năng (BYOK)
+  Livia: Trợ lý AI Riêng Tư & Toàn Năng Trên Web
   ```
 
 - **Summary (Mô tả ngắn - ≤ 132 ký tự)**:
   ```text
-  Trợ lý AI đa năng hỗ trợ dịch thuật, giải thích, tóm tắt và chat side panel trên mọi trang web. Bảo mật tuyệt đối theo mô hình BYOK.
+  Your private AI copilot on every web page. Instant translate, summarize & rewrite with Gemini, Claude & GPT-4o. 100% Private BYOK.
   ```
-  *(English version)*:
+  *(Phiên bản tiếng Việt - ≤ 132 ký tự)*:
   ```text
-  All-in-one AI assistant for translation, summarization, and side-panel chat across any web page. 100% private Bring Your Own Key.
+  Trợ lý AI đa năng riêng tư trên mọi trang web. Dịch thuật, tóm tắt, viết lại tức thì với Gemini, Claude & GPT-4o. Bảo mật 100% BYOK.
   ```
 
 - **Detailed Description (Mô tả chi tiết)**:
   ```text
-  ⚡ Lightning là trợ lý AI cá nhân toàn năng hoạt động mượt mà trên mọi trang web theo mô hình BYOK (Bring Your Own Key). Tự do kết nối API Key của bạn từ Google Gemini, OpenAI hoặc Anthropic Claude — hoàn toàn không qua máy chủ trung gian, không thu thập dữ liệu và không phát sinh chi phí ẩn!
+  ✨ Livia là trợ lý AI thông minh toàn năng (All-in-One AI Copilot) hoạt động mượt mà trực tiếp trên mọi trang web theo kiến trúc bảo mật BYOK (Bring Your Own Key). Tự do kết nối API Key từ Google Gemini, OpenAI hoặc Anthropic Claude — 100% không qua máy chủ trung gian, không thu thập dữ liệu và không tốn phí thuê bao hàng tháng!
 
-  🌟 TÍNH NĂNG NỔI BẬT:
-  ---------------------------------
-  1. 📌 THANH CÔNG CỤ NỔI (FLOATING TOOLBAR) KHI BÔI ĐEN VĂN BẢN:
-     • Dịch thuật tức thì giữa các ngôn ngữ (Tiếng Việt, Tiếng Anh, Tiếng Nhật...).
-     • Giải thích thuật ngữ, phân tích ngữ cảnh chuyên sâu.
-     • Kiểm tra và sửa lỗi ngữ pháp, hành văn tự nhiên.
-     • Viết tiếp hoặc rút gọn đoạn văn với một cú nhấp chuột.
-     • Tùy chỉnh danh sách hành động ghim theo thói quen đọc và viết.
+  🌟 CÁC TÍNH NĂNG ĐỘT PHÁ CỦA LIVIA:
+  -------------------------------------------------------------
+  1. 📌 THANH CÔNG CỤ NỔI HIỆN ĐẠI (CAPSULE FLOATING TOOLBAR):
+     • Tự động xuất hiện tinh tế ngay khi bạn bôi đen văn bản trên trang web.
+     • Dịch thuật tức thì giữa hơn 100+ ngôn ngữ (Tiếng Việt, Anh, Nhật, Hàn, Trung...).
+     • Phân tích ngữ cảnh, giải thích thuật ngữ chuyên môn và thành ngữ tự nhiên.
+     • Viết lại đoạn văn, chỉnh sửa ngữ pháp hoặc nâng tầm giọng văn chuyên nghiệp.
+     • Tùy chỉnh danh sách hành động ghim theo nhu cầu làm việc và học tập.
 
-  2. 📄 TÓM TẮT TOÀN BỘ TRANG WEB (READABILITY):
-     • Tích hợp Mozilla Readability giúp trích xuất nội dung cốt lõi của bài báo, tài liệu.
-     • Sinh bản tóm tắt súc tích, làm nổi bật các ý chính trong vài giây.
+  2. 📄 TÓM TẮT TOÀN BỘ TRANG WEB (MOZILLA READABILITY):
+     • Tích hợp thuật toán Mozilla Readability trích xuất nội dung cốt lõi của bài báo, tài liệu học thuật.
+     • Rút ngắn bài viết 10,000 chữ thành các luận điểm súc tích chỉ trong vài giây.
+     • Chuyển đổi nhanh sang chế độ giải thích bình dân (ELI5 - Explain Like I'm 5).
 
-  3. 🖱️ MENU CHUỘT PHẢI (CONTEXT MENU):
-     • Kích hoạt nhanh các tác vụ AI cho đoạn văn bản đã chọn từ menu ngữ cảnh.
+  3. ✍️ TRỢ LÝ VIẾT INLINE TRONG CÁC Ô NHẬP LIỆU:
+     • Hỗ trợ viết email, phản hồi bình luận, soạn thảo thảo luận trên Gmail, LinkedIn, GitHub, Docs.
+     • Đề xuất phương án viết lại chuẩn xác và cho phép thay thế trực tiếp chỉ với 1 cú click.
 
-  4. 🔒 BẢO MẬT TUYỆT ĐỐI VỚI MÔ HÌNH BYOK:
-     • Kết nối trực tiếp với các nhà cung cấp AI hàng đầu:
+  4. 🔒 BẢO MẬT TUYỆT ĐỐI VỚI MÔ HÌNH 100% CLIENT-SIDE BYOK:
+     • Kết nối trực tiếp từ trình duyệt của bạn đến các nhà cung cấp AI hàng đầu:
        - Google Gemini (Gemini 1.5 Flash, Gemini 1.5 Pro)
        - OpenAI (GPT-4o, GPT-4o mini)
        - Anthropic Claude (Claude 3.5 Sonnet, Claude 3 Haiku)
-     • API Key và cấu hình được lưu trữ cục bộ 100% trong trình duyệt của bạn (chrome.storage.local).
-     • Không trung gian, không theo dõi lịch sử duyệt web, không quảng cáo.
+       - OpenRouter (Meta Llama 3.3, DeepSeek, Mistral...)
+     • API Key và cài đặt cá nhân được lưu trữ cục bộ 100% trong trình duyệt (chrome.storage.local).
+     • Không máy chủ trung gian, không theo dõi lịch sử duyệt web, không quảng cáo, không phí ẩn.
 
-  💡 HƯỚNG DẪN BẮT ĐẦU:
-  1. Cài đặt tiện ích Lightning.
-  2. Mở trang Cài đặt (Options) và nhập API Key của nhà cung cấp bạn muốn sử dụng (Google Gemini, OpenAI hoặc Claude).
-  3. Bôi đen bất kỳ đoạn văn bản nào trên trang web để trải nghiệm thanh công cụ nổi!
+  💡 HƯỚNG DẪN SỬ DỤNG NHANH:
+  1. Thêm tiện ích Livia vào Chrome.
+  2. Mở trang Cài đặt (Options) và nhập API Key của bạn (khuyên dùng Google Gemini hoàn toàn miễn phí hoặc OpenAI/Claude).
+  3. Bôi đen bất kỳ đoạn văn bản nào trên trang web để trải nghiệm thanh công cụ nổi Livia!
   ```
 
 ### Categorization (Phân loại)
 - **Category (Danh mục)**: `Productivity` (Năng suất) hoặc `Workflow & Planning`.
 - **Language (Ngôn ngữ chính)**: `English` hoặc `Tiếng Việt`.
 
-### Graphic Assets (Tài nguyên hình ảnh)
-- **Store Icon**: Tải lên file [`public/icons/icon128.png`](file:///Users/tuyennq1001/htdocs/projects/lightning/public/icons/icon128.png) (128x128 px).
-- **Screenshots (Ảnh chụp màn hình)**: Chuẩn bị 1 đến 5 ảnh định dạng **1280x800 px** hoặc **640x400 px**. Khuyến nghị 4 ảnh:
-  1. *Ảnh 1*: Bôi đen văn bản trên trang web hiển thị Floating Toolbar và kết quả popup (dịch/giải thích).
-  2. *Ảnh 2*: Trang Cài đặt Options cấu hình BYOK (Gemini, OpenAI, Claude, OpenRouter).
-  3. *Ảnh 3*: Tóm tắt trang web với Mozilla Readability.
-- **Small Promo Tile**: Ảnh kích thước 440x280 px (tùy chọn hoặc khuyến nghị tạo).
+### Graphic Assets (Tài nguyên hình ảnh tiếp thị)
+Tất cả hình ảnh đã được chuẩn hóa kích thước và chất lượng cao nằm trong thư mục `store-assets/`:
+1. **Marquee Promo Tile**: `store-assets/marquee-1400x560.png` (1400 x 560 px).
+2. **Small Promo Tile**: `store-assets/promo-tile-440x280.png` (440 x 280 px).
+3. **Store Icon**: `public/icons/icon128.png` (128 x 128 px).
+4. **Bộ 5 Screenshots Showcase (1280 x 800 px)**:
+   - `store-assets/screenshot-1-hero-1280x800.png` (Showcase 1: Giới thiệu tổng quan Livia Copilot).
+   - `store-assets/screenshot-2-translate-1280x800.png` (Showcase 2: Dịch thuật ngữ cảnh sâu & từ vựng).
+   - `store-assets/screenshot-3-summarize-1280x800.png` (Showcase 3: Tóm tắt trang web Readability siêu tốc).
+   - `store-assets/screenshot-4-write-1280x800.png` (Showcase 4: Trợ lý viết & tinh chỉnh văn phong).
+   - `store-assets/screenshot-5-byok-1280x800.png` (Showcase 5: Kiến trúc bảo mật BYOK độc lập 100%).
+
+*(Bạn cũng có thể mở file `tools/store-asset-generator.html` trên trình duyệt để xem trước trực quan toàn bộ bộ ảnh này).*
 
 ---
 
 ## 3. Tab "Privacy" (Quyền riêng tư & Giải trình Quyền hạn)
 
-Đây là phần **quan trọng nhất** quyết định việc duyệt của Google Chrome Web Store.
-
 ### Single Purpose (Mục đích duy nhất của tiện ích)
-Điền vào ô mô tả Single Purpose:
 ```text
-Lightning is an AI-powered reading and writing productivity assistant that allows users to translate, explain, summarize, and chat with AI directly on web pages using their own API keys (Bring Your Own Key architecture).
+Livia is a privacy-first AI browsing assistant that enables users to translate, explain, summarize, and polish text directly on web pages using their own AI API keys (100% Client-Side Bring Your Own Key architecture).
 ```
 
 ### Permission Justifications (Giải trình lý do xin quyền)
-Google sẽ hỏi lý do cho từng quyền được khai báo trong `manifest.json`:
-
 1. **`storage`**:
    ```text
    Used to store user preferences, custom action prompts, selected UI language, and user-provided API keys locally on the device via chrome.storage.local.
    ```
-
-2. **`activeTab`**:
+2. **`contextMenus`**:
    ```text
-   Used to access the currently active web page only when the user explicitly triggers features such as "Summarize this page" or interacts with the contextual toolbar.
+   Used to add right-click context menu shortcuts allowing users to trigger instant AI translation, explanation, or page summarization for selected web content.
    ```
-
-3. **`scripting`**:
+3. **`activeTab`**:
    ```text
-   Used to safely extract article text from the active tab using Mozilla Readability when the user clicks "Summarize this page" without modifying the underlying DOM.
+   Used to access the currently active tab when the user explicitly triggers page summarization or opens the action popup.
    ```
-
-4. **`contextMenus`**:
+4. **Host permissions (`<all_urls>`)**:
    ```text
-   Used to add right-click menu shortcuts (Translate, Explain, Summarize, Rewrite) on selected text for quick AI processing.
+   Required for the content script to inject the floating action toolbar and popover directly on user-selected text across web pages, and to send direct, authenticated HTTPS requests to user-configured AI provider endpoints (Google Gemini, OpenAI, Anthropic Claude, and OpenRouter) without routing through any intermediary servers.
    ```
-
-5. **Host Permissions (`<all_urls>`)**:
-   ```text
-   Required for two critical purposes:
-   1. To inject the isolated Shadow DOM selection toolbar across websites where the user reads or edits text.
-   2. To enable direct browser-to-API network requests to the official AI endpoints (Google Generative Language API, OpenAI API, Anthropic API) without routing through any intermediate servers.
-   ```
-
-### Data Usage & Declarations (Khai báo sử dụng dữ liệu)
-- **Do you collect personal data?**: Chọn **No** cho tất cả các loại dữ liệu cá nhân (PII, Financial, Health, Authentication, Location...).
-- **Website Content**: Đánh dấu chọn **Yes**, sau đó chọn:
-  - **Data collection purpose**: `App functionality`.
-  - **Does this data identify a user?**: `No`.
-  - **Do you sell or transfer data to third parties?**: `No`.
-- **Certifications**:
-  - Tích chọn: *"I certify that this extension complies with the Limited Use policy."*
-  - Tích chọn: *"I do not sell or transfer user data."*
-  - Tích chọn: *"I do not use or transfer user data for purposes that are unrelated to the item's core functionality."*
-  - Tích chọn: *"I do not use or transfer user data to determine creditworthiness or for lending purposes."*
-
-### Privacy Policy URL (Đường dẫn chính sách bảo mật)
-- Bạn có thể đưa nội dung file `PRIVACY_POLICY.md` lên:
-  - **Cách 1 (Khuyên dùng)**: Tạo GitHub Repository công khai (ví dụ repo của tiện ích) và dùng link file `PRIVACY_POLICY.md` hoặc kích hoạt **GitHub Pages**.
-  - **Cách 2**: Đưa nội dung vào một trang Notion hoặc Google Sites công khai.
-- Nhập URL công khai đó vào ô **Privacy policy** trên dashboard.
-
----
-
-## 4. Tab "Distribution" (Phân phối)
-- **Visibility (Hiển thị)**: `Public` (Công khai).
-- **Regions (Quốc gia)**: Chọn `All regions` (Tất cả khu vực).
-- **Trader Status (Tư cách thương nhân)**: Chọn **Non-trader** (Phi thương mại/Cá nhân) nếu bạn phát hành tiện ích miễn phí và không thu phí giao dịch.
-
----
-
-## 5. Reviewer Notes (Ghi chú cho đội ngũ kiểm duyệt của Google)
-Nếu dashboard có mục **Reviewer notes**, hãy dán nội dung này để reviewer hiểu rõ cách kiểm tra:
-```text
-This extension operates under the Bring Your Own Key (BYOK) model. To test its functionality:
-1. Open the Options page by clicking on the extension icon or right-clicking > Options.
-2. Enter a valid Google Gemini, OpenAI, or Anthropic Claude API key.
-3. Highlight any text on any webpage to see the floating AI action toolbar.
-All network requests are made directly from the client to the official provider endpoints. No backend proxy or tracking servers are involved.
-```

@@ -10,37 +10,55 @@
   --tw-scale-z: 1;
 }
 
-/* Explicit popup border classes to guarantee crisp dark border rendering in Shadow DOM */
+/* Modern Glassmorphism & Cyber Emerald Glow for Livia in Shadow DOM */
+.livia-toolbar,
 .lightning-toolbar {
-  border: 2px solid #0f172a !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 0 15px 0 rgba(16, 185, 129, 0.2) !important;
 }
 
+.livia-dropdown,
 .lightning-dropdown {
-  border: 2px solid #0f172a !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.2), 0 0 20px 0 rgba(20, 184, 166, 0.18) !important;
 }
 
+.livia-modal,
 .lightning-modal {
-  border: 2px solid #0f172a !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  background: #ffffff !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 25px 0 rgba(16, 185, 129, 0.22) !important;
 }
 
 /* Modal Header Drag Cursor Consistency */
+.livia-modal-header,
 .lightning-modal-header {
   cursor: grab !important;
 }
 
+.livia-modal-header *,
 .lightning-modal-header * {
   cursor: grab !important;
 }
 
+.livia-modal-header.is-dragging,
+.livia-modal-header.is-dragging *,
 .lightning-modal-header.is-dragging,
 .lightning-modal-header.is-dragging * {
   cursor: grabbing !important;
 }
 
 /* Interactive Elements inside Header Retain Pointer */
+.livia-modal-header button,
+.livia-modal-header select,
+.livia-modal-header input,
+.livia-modal-header a,
 .lightning-modal-header button,
 .lightning-modal-header select,
 .lightning-modal-header input,
@@ -48,12 +66,14 @@
   cursor: pointer !important;
 }
 
-/* Precise Centering for Tooltips and Arrow Pointer in Shadow DOM */
+/* Tooltip and Pointer Arrow */
+.livia-tooltip,
 .lightning-tooltip {
   left: 50% !important;
   transform: translateX(-50%) !important;
 }
 
+.livia-tooltip-arrow,
 .lightning-tooltip-arrow {
   left: 50% !important;
   transform: translateX(-50%) !important;
@@ -61,10 +81,11 @@
   height: 0 !important;
   border-width: 4px !important;
   border-style: solid !important;
-  border-color: #0f172a transparent transparent transparent !important;
+  border-color: #062b23 transparent transparent transparent !important;
 }
 
-/* Markdown Styles for Lightning */
+/* Markdown Styles for Livia AI Results */
+.livia-markdown,
 .lightning-markdown {
   font-family: inherit;
   font-size: inherit;
@@ -73,33 +94,39 @@
   word-break: break-word;
 }
 
+.livia-markdown h1,
 .lightning-markdown h1 {
   font-size: 1.25rem;
   font-weight: 700;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
-  color: #0f172a;
+  color: #064e3b;
   line-height: 1.3;
 }
 
+.livia-markdown h2,
 .lightning-markdown h2 {
   font-size: 1.125rem;
   font-weight: 700;
   margin-top: 0.875rem;
   margin-bottom: 0.375rem;
-  color: #0f172a;
+  color: #047857;
   line-height: 1.35;
 }
 
+.livia-markdown h3,
 .lightning-markdown h3 {
   font-size: 1rem;
   font-weight: 600;
   margin-top: 0.75rem;
   margin-bottom: 0.25rem;
-  color: #0f172a;
+  color: #065f46;
   line-height: 1.4;
 }
 
+.livia-markdown h4, 
+.livia-markdown h5, 
+.livia-markdown h6,
 .lightning-markdown h4, 
 .lightning-markdown h5, 
 .lightning-markdown h6 {
@@ -107,31 +134,37 @@
   font-weight: 600;
   margin-top: 0.625rem;
   margin-bottom: 0.25rem;
-  color: #334155;
+  color: #0f766e;
 }
 
+.livia-markdown p,
 .lightning-markdown p {
   margin-bottom: 0.625rem;
 }
 
+.livia-markdown p:last-child,
 .lightning-markdown p:last-child {
   margin-bottom: 0;
 }
 
+.livia-markdown strong,
 .lightning-markdown strong {
   font-weight: 600;
-  color: #0f172a;
+  color: #04120f;
 }
 
+.livia-markdown em,
 .lightning-markdown em {
   font-style: italic;
 }
 
+.livia-markdown del,
 .lightning-markdown del {
   text-decoration: line-through;
   color: #94a3b8;
 }
 
+.livia-markdown ul,
 .lightning-markdown ul {
   list-style-type: disc;
   margin-left: 1.25rem;
@@ -139,6 +172,7 @@
   padding-left: 0.25rem;
 }
 
+.livia-markdown ol,
 .lightning-markdown ol {
   list-style-type: decimal;
   margin-left: 1.25rem;
@@ -146,72 +180,80 @@
   padding-left: 0.25rem;
 }
 
+.livia-markdown li,
 .lightning-markdown li {
   margin-bottom: 0.25rem;
   line-height: 1.55;
 }
 
+.livia-markdown li > p,
 .lightning-markdown li > p {
   margin-bottom: 0.25rem;
 }
 
+.livia-markdown blockquote,
 .lightning-markdown blockquote {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid #10b981;
   padding-left: 0.875rem;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
   margin-top: 0.625rem;
   margin-bottom: 0.625rem;
-  color: #475569;
-  background-color: #f8fafc;
+  color: #064e3b;
+  background-color: #ecfdf5;
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
+.livia-markdown code:not(pre code),
 .lightning-markdown code:not(pre code) {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.8125rem;
-  background-color: #f1f5f9;
-  color: #6366f1;
+  background-color: #f0fdfa;
+  color: #0f766e;
   padding: 0.125rem 0.375rem;
   border-radius: 0.375rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #ccfbf1;
   word-break: break-all;
 }
 
+.livia-markdown .code-block-wrapper,
 .lightning-markdown .code-block-wrapper {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
   border-radius: 0.75rem;
   overflow: hidden;
-  border: 1px solid #1e293b;
-  background-color: #090d16;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  border: 1px solid #134e42;
+  background-color: #04120f;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.15);
 }
 
+.livia-markdown .code-header,
 .lightning-markdown .code-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.375rem 0.75rem;
-  background-color: #0f172a;
-  border-bottom: 1px solid #1e293b;
+  background-color: #061f19;
+  border-bottom: 1px solid #134e42;
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: #a7f3d0;
 }
 
+.livia-markdown .code-lang,
 .lightning-markdown .code-lang {
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-weight: 600;
   text-transform: uppercase;
-  color: #cbd5e1;
+  color: #34d399;
 }
 
+.livia-markdown .copy-code-btn,
 .lightning-markdown .copy-code-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: #a7f3d0;
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   transition: all 0.15s ease;
@@ -220,11 +262,13 @@
   border: none;
 }
 
+.livia-markdown .copy-code-btn:hover,
 .lightning-markdown .copy-code-btn:hover {
   color: #ffffff;
-  background-color: #1e293b;
+  background-color: #0a3d31;
 }
 
+.livia-markdown pre,
 .lightning-markdown pre {
   margin: 0;
   padding: 0.75rem 1rem;
@@ -232,10 +276,11 @@
   font-size: 0.8125rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
-  color: #e2e8f0;
+  color: #f1f5f9;
   background-color: transparent;
 }
 
+.livia-markdown pre code,
 .lightning-markdown pre code {
   background-color: transparent;
   color: inherit;
@@ -244,6 +289,7 @@
   font-size: inherit;
 }
 
+.livia-markdown table,
 .lightning-markdown table {
   width: 100%;
   border-collapse: collapse;
@@ -252,34 +298,40 @@
   font-size: 0.8125rem;
 }
 
+.livia-markdown th,
 .lightning-markdown th {
-  background-color: #f1f5f9;
+  background-color: #f0fdf4;
   font-weight: 600;
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  color: #0f172a;
+  border: 1px solid #a7f3d0;
+  color: #064e3b;
 }
 
+.livia-markdown td,
 .lightning-markdown td {
   padding: 0.5rem 0.75rem;
   border: 1px solid #e2e8f0;
 }
 
+.livia-markdown tr:nth-child(even),
 .lightning-markdown tr:nth-child(even) {
   background-color: #f8fafc;
 }
 
+.livia-markdown a,
 .lightning-markdown a {
-  color: #2563eb;
+  color: #059669;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
+.livia-markdown a:hover,
 .lightning-markdown a:hover {
-  color: #1d4ed8;
+  color: #047857;
 }
 
+.livia-markdown hr,
 .lightning-markdown hr {
   margin-top: 1rem;
   margin-bottom: 1rem;

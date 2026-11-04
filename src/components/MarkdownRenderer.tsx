@@ -71,14 +71,14 @@ export default function MarkdownRenderer({ content, isGenerating = false, classN
   return (
     <div 
       onClick={handleContainerClick} 
-      className={`lightning-markdown ${className}`}
+      className={`livia-markdown lightning-markdown ${className}`}
     >
       <div 
         dangerouslySetInnerHTML={{ __html: htmlContent }} 
         className="inline"
       />
       {isGenerating && (
-        <span className="inline-block w-1.5 h-4 ml-1 bg-blue-600 animate-pulse align-middle" />
+        <span className="inline-block w-2 h-4 ml-1 bg-emerald-500 rounded-xs animate-pulse align-middle shadow-[0_0_8px_#10b981]" />
       )}
     </div>
   );

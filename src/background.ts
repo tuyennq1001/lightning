@@ -16,15 +16,15 @@ const updateContextMenus = (settings: UserSettings) => {
         // Suppress benign lastError during cleanup
       }
 
-      // Page context menu (Option A: Submenu under ⚡ Lightning AI)
+      // Page context menu (Option A: Submenu under ✨ Livia Copilot)
       const pageActions = (settings?.pageActions && settings.pageActions.length > 0)
         ? settings.pageActions
         : DEFAULT_PAGE_ACTIONS;
 
-      const pageParentId = 'lightning-page-parent';
+      const pageParentId = 'livia-page-parent';
       chrome.contextMenus.create({
         id: pageParentId,
-        title: 'Lightning AI',
+        title: 'Livia Copilot',
         contexts: ['page'],
       }, () => {
         if (chrome.runtime.lastError) { /* ignore */ }
@@ -53,7 +53,7 @@ const updateContextMenus = (settings: UserSettings) => {
       if (linkSummarizeAction && linkSummarizeAction.enabled !== false) {
         chrome.contextMenus.create({
           id: 'summarize-link',
-          title: `Lightning AI: ${t.actionSummarizeLink}`,
+          title: `Livia: ${t.actionSummarizeLink}`,
           contexts: ['link'],
         }, () => {
           if (chrome.runtime.lastError) { /* ignore */ }

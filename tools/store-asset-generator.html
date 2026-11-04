@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Livia AI • Chrome Web Store Asset Studio</title>
+  <style>
+    :root {
+      --bg: #030a08;
+      --card-bg: #071915;
+      --border: #143e34;
+      --accent-emerald: #10b981;
+      --accent-teal: #14b8a6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      padding: 40px 24px;
+      line-height: 1.5;
+    }
+    .header {
+      max-width: 1280px;
+      margin: 0 auto 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: #062b23;
+      border: 1px solid var(--accent-emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 24px;
+      color: #34d399;
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+    h1 { font-size: 26px; font-weight: 800; }
+    .subtitle { color: var(--text-muted); font-size: 14px; }
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+    }
+    .asset-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .asset-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .asset-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #a7f3d0;
+    }
+    .asset-badge {
+      font-size: 12px;
+      font-weight: 600;
+      background: #06382c;
+      color: #34d399;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(52, 211, 153, 0.2);
+    }
+    .preview-box {
+      width: 100%;
+      background: #020705;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid #0f2c25;
+    }
+    .preview-box img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .btn-download {
+      background: linear-gradient(135deg, var(--accent-emerald), var(--accent-teal));
+      color: #022019;
+      font-weight: 700;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-download:hover {
+      opacity: 0.9;
+      box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <div>
+        <h1>Livia: Chrome Web Store Asset Studio</h1>
+        <div class="subtitle">Pixel-perfect promotional graphics in Cyber Emerald & Mint Teal</div>
+      </div>
+    </div>
+    <span class="asset-badge">All 7 PNG Assets Generated</span>
+  </div>
+
+  <div class="container">
+    <!-- Marquee Banner -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">1. Marquee Promo Banner (1400 x 560 px)</div>
+          <div class="subtitle">Hero showcase featured in Chrome Web Store banner rotation</div>
+        </div>
+        <a class="btn-download" href="../store-assets/marquee-1400x560.png" download="livia-marquee-1400x560.png">Download Banner PNG</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/marquee-1400x560.png" alt="Livia Marquee Banner">
+      </div>
+    </div>
+
+    <!-- Small Promo Tile -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">2. Small Promo Tile (440 x 280 px)</div>
+          <div class="subtitle">Card tile displayed in search results and category recommendations</div>
+        </div>
+        <a class="btn-download" href="../store-assets/promo-tile-440x280.png" download="livia-promo-tile-440x280.png">Download Tile PNG</a>
+      </div>
+      <div class="preview-box" style="max-width: 600px; margin: 0 auto;">
+        <img src="../store-assets/promo-tile-440x280.png" alt="Livia Small Promo Tile">
+      </div>
+    </div>
+
+    <!-- Showcase Screenshot 1 -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">3. Screenshot 1: Hero Overview (1280 x 800 px)</div>
+          <div class="subtitle">Floating Toolbar and Popover on Selected Text</div>
+        </div>
+        <a class="btn-download" href="../store-assets/screenshot-1-hero-1280x800.png" download="livia-screenshot-1.png">Download Screenshot 1</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/screenshot-1-hero-1280x800.png" alt="Screenshot 1">
+      </div>
+    </div>
+
+    <!-- Showcase Screenshot 2 -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">4. Screenshot 2: Nuanced Translation (1280 x 800 px)</div>
+          <div class="subtitle">Side-by-side reading with vocabulary & grammar context</div>
+        </div>
+        <a class="btn-download" href="../store-assets/screenshot-2-translate-1280x800.png" download="livia-screenshot-2.png">Download Screenshot 2</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/screenshot-2-translate-1280x800.png" alt="Screenshot 2">
+      </div>
+    </div>
+
+    <!-- Showcase Screenshot 3 -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">5. Screenshot 3: Full Page Summarizer (1280 x 800 px)</div>
+          <div class="subtitle">Mozilla Readability engine condensing 10,000 words into key bullets</div>
+        </div>
+        <a class="btn-download" href="../store-assets/screenshot-3-summarize-1280x800.png" download="livia-screenshot-3.png">Download Screenshot 3</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/screenshot-3-summarize-1280x800.png" alt="Screenshot 3">
+      </div>
+    </div>
+
+    <!-- Showcase Screenshot 4 -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">6. Screenshot 4: Inline Writing & Tone Polisher (1280 x 800 px)</div>
+          <div class="subtitle">Instant professional rewrite suggestions in email and forms</div>
+        </div>
+        <a class="btn-download" href="../store-assets/screenshot-4-write-1280x800.png" download="livia-screenshot-4.png">Download Screenshot 4</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/screenshot-4-write-1280x800.png" alt="Screenshot 4">
+      </div>
+    </div>
+
+    <!-- Showcase Screenshot 5 -->
+    <div class="asset-card">
+      <div class="asset-header">
+        <div>
+          <div class="asset-title">7. Screenshot 5: 100% Private BYOK Architecture (1280 x 800 px)</div>
+          <div class="subtitle">Direct API Key connection to Gemini, Claude & OpenAI with zero middleman</div>
+        </div>
+        <a class="btn-download" href="../store-assets/screenshot-5-byok-1280x800.png" download="livia-screenshot-5.png">Download Screenshot 5</a>
+      </div>
+      <div class="preview-box">
+        <img src="../store-assets/screenshot-5-byok-1280x800.png" alt="Screenshot 5">
+      </div>
+    </div>
+  </div>
+</body>
+</html>
