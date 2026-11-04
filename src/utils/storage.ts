@@ -81,6 +81,7 @@ export interface UserSettings {
   modelId?: string;
   apiKeys?: Partial<Record<AIProvider, string>>;
   modelIds?: Partial<Record<AIProvider, string>>;
+  cachedModels?: Partial<Record<AIProvider, { id: string; name: string }[]>>;
   sourceLanguage: string;
   targetLanguage: string;
   outputLanguage?: string;
@@ -174,12 +175,52 @@ export const DEFAULT_ACTIONS: CustomAction[] = [
   },
 ];
 
+export const DEFAULT_PROVIDER_MODELS: Record<AIProvider, { id: string; name: string }[]> = {
+  gemini: [
+    { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
+    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash-Lite Latest' },
+    { id: 'gemini-pro-latest', name: 'Gemini Pro Latest' },
+    { id: 'gemini-4-argon', name: 'Gemini 4 Argon' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash-Lite' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+  ],
+  openai: [
+    { id: 'gpt-4o', name: 'GPT-4o' },
+    { id: 'gpt-4o-mini', name: 'GPT-4o mini' },
+    { id: 'o3-mini', name: 'o3-mini' },
+    { id: 'o1-mini', name: 'o1-mini' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+  ],
+  claude: [
+    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
+    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
+    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
+    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+  ],
+  openrouter: [
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct (Free)' },
+    { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free)' },
+    { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash Exp (Free)' },
+    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct (Free)' },
+  ],
+};
+
 export const DEFAULT_SETTINGS: UserSettings = {
   apiKey: '',
   provider: 'gemini',
-  modelId: '',
+  modelId: 'gemini-flash-latest',
   apiKeys: {},
-  modelIds: {},
+  modelIds: {
+    gemini: 'gemini-flash-latest',
+    openai: 'gpt-4o-mini',
+    claude: 'claude-3-5-haiku-20241022',
+    openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
+  },
+  cachedModels: DEFAULT_PROVIDER_MODELS,
   sourceLanguage: 'auto',
   targetLanguage: 'Vietnamese',
   outputLanguage: 'Vietnamese',
@@ -361,6 +402,10 @@ export const storage = {
       const activeModelId = modelIds[activeProvider] ?? saved.modelId ?? '';
 
       const sanitizedPageActions = sanitizePageActions(saved.pageActions, lang);
+      const cachedModels = {
+        ...DEFAULT_PROVIDER_MODELS,
+        ...(saved.cachedModels || {}),
+      };
 
       // Auto-cleanup stale/deprecated actions in storage if any were purged
       if (Array.isArray(saved.pageActions) && saved.pageActions.some(a => a.id === 'summarize-youtube' || a.id === 'explain-link')) {
@@ -380,6 +425,7 @@ export const storage = {
         modelId: activeModelId,
         apiKeys,
         modelIds,
+        cachedModels,
         outputLanguage,
         fontFamily: normalizeFontFamily(saved.fontFamily),
         fontSize: normalizeFontSize(saved.fontSize),
@@ -413,6 +459,10 @@ export const storage = {
       ...(currentSettings.modelIds || {}),
       ...(settings.modelIds || {}),
     };
+    const newCachedModels: Partial<Record<AIProvider, { id: string; name: string }[]>> = {
+      ...(currentSettings.cachedModels || DEFAULT_PROVIDER_MODELS),
+      ...(settings.cachedModels || {}),
+    };
 
     if (settings.apiKey !== undefined) {
       newApiKeys[activeProvider] = settings.apiKey;
@@ -432,6 +482,7 @@ export const storage = {
       modelId: activeModelId,
       apiKeys: newApiKeys,
       modelIds: newModelIds,
+      cachedModels: newCachedModels,
       outputLanguage: newOutputLang,
       fontFamily: normalizeFontFamily(settings.fontFamily || currentSettings.fontFamily),
       fontSize: normalizeFontSize(settings.fontSize || currentSettings.fontSize),
@@ -469,6 +520,10 @@ export const storage = {
           modelId: modelIds[activeProvider] ?? val.modelId ?? '',
           apiKeys,
           modelIds,
+          cachedModels: {
+            ...DEFAULT_PROVIDER_MODELS,
+            ...(val.cachedModels || {}),
+          },
           outputLanguage,
           fontFamily: normalizeFontFamily(val.fontFamily),
           fontSize: normalizeFontSize(val.fontSize),
