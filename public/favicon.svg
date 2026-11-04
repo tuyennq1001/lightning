@@ -1,152 +1,113 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
     <!-- Background Gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#070c1e" />
-      <stop offset="50%" stop-color="#040916" />
-      <stop offset="100%" stop-color="#02040a" />
+    <linearGradient id="liviaBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#041210" />
+      <stop offset="50%" stop-color="#061f1a" />
+      <stop offset="100%" stop-color="#020807" />
     </linearGradient>
 
-    <!-- Bolt Gradient -->
-    <linearGradient id="boltGrad" x1="20%" y1="0%" x2="80%" y2="100%">
+    <!-- Squircle Border Gradient -->
+    <linearGradient id="liviaBorderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#14b8a6" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#059669" stop-opacity="0.4" />
+    </linearGradient>
+
+    <!-- Radial Emerald Aura -->
+    <radialGradient id="liviaAura" cx="45%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.45" />
+      <stop offset="40%" stop-color="#0d9488" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#041210" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Ribbon L Stem Gradient -->
+    <linearGradient id="ribbonStemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a7f3d0" />
+      <stop offset="25%" stop-color="#34d399" />
+      <stop offset="65%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+
+    <!-- Ribbon L Loop Gradient -->
+    <linearGradient id="ribbonLoopGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="35%" stop-color="#14b8a6" />
+      <stop offset="70%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#99f6e4" />
+    </linearGradient>
+
+    <!-- Spark Star Gradient -->
+    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="35%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#00f0ff" />
-    </linearGradient>
-
-    <!-- Brain Neon Violet Gradient -->
-    <linearGradient id="neonViolet" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f472b6" />
-      <stop offset="50%" stop-color="#c084fc" />
-      <stop offset="100%" stop-color="#818cf8" />
-    </linearGradient>
-
-    <!-- Brain Neon Cyan Gradient -->
-    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#06b6d4" />
+      <stop offset="40%" stop-color="#ccfbf1" />
+      <stop offset="100%" stop-color="#2dd4bf" />
     </linearGradient>
 
     <!-- Glow Filter -->
-    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
-
-    <filter id="boltGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="10" result="blur1" />
-      <feGaussianBlur stdDeviation="4" result="blur2" />
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur1" />
+      <feGaussianBlur stdDeviation="6" result="blur2" />
       <feMerge>
         <feMergeNode in="blur1" />
         <feMergeNode in="blur2" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
+
+    <!-- Star Glow Filter -->
+    <filter id="starGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="starBlur" />
+      <feMerge>
+        <feMergeNode in="starBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
 
   <!-- Squircle Base (App Icon) -->
-  <rect x="16" y="16" width="480" height="480" rx="110" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="4" />
-  
-  <!-- Outer Subtle Ambient Ring -->
-  <rect x="24" y="24" width="464" height="464" rx="102" fill="none" stroke="url(#neonCyan)" stroke-width="1.5" stroke-opacity="0.3" />
+  <rect x="16" y="16" width="480" height="480" rx="112" ry="112" fill="url(#liviaBgGrad)" />
+  <rect x="16" y="16" width="480" height="480" rx="112" ry="112" fill="url(#liviaAura)" />
+  <rect x="17" y="17" width="478" height="478" rx="111" ry="111" fill="none" stroke="url(#liviaBorderGrad)" stroke-width="3" />
 
-  <!-- Left Brain Hemisphere Synapse Web -->
-  <g stroke="url(#neonCyan)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
-    <!-- Outer brain contours -->
-    <path d="M 230 110 C 170 105, 110 140, 100 200 C 90 240, 105 270, 115 290 C 105 320, 115 365, 150 395 C 180 415, 220 410, 230 400" fill="none" />
-    <!-- Inner network connections -->
-    <line x1="230" y1="110" x2="175" y2="150" />
-    <line x1="175" y1="150" x2="125" y2="190" />
-    <line x1="175" y1="150" x2="200" y2="215" />
-    <line x1="125" y1="190" x2="100" y2="200" />
-    <line x1="125" y1="190" x2="140" y2="255" />
-    <line x1="200" y1="215" x2="140" y2="255" />
-    <line x1="200" y1="215" x2="225" y2="270" />
-    <line x1="140" y1="255" x2="115" y2="290" />
-    <line x1="140" y1="255" x2="155" y2="330" />
-    <line x1="115" y1="290" x2="155" y2="330" />
-    <line x1="155" y1="330" x2="150" y2="395" />
-    <line x1="155" y1="330" x2="205" y2="365" />
-    <line x1="205" y1="365" x2="230" y2="400" />
+  <!-- Inner Ambient Circle -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.15" stroke-dasharray="8 6" />
+
+  <!-- Livia Stylized Ribbon "L" Graphic with Glow -->
+  <g filter="url(#softGlow)">
+    <!-- Base shadow/depth fold -->
+    <path d="M168 132 C 168 120, 182 114, 192 122 L 230 152 C 238 158, 244 168, 244 178 L 244 290 C 244 326, 274 356, 310 356 L 358 356 C 370 356, 378 368, 372 380 L 356 408 C 350 418, 338 424, 326 424 L 232 424 C 182 424, 142 384, 142 334 L 142 160 C 142 144, 154 132, 168 132 Z" 
+          fill="#034e3b" opacity="0.6" />
+
+    <!-- Main Vertical Stem of the 'L' -->
+    <path d="M 152 148 C 152 136, 164 126, 178 126 C 192 126, 204 136, 204 148 L 204 316 C 204 344, 226 366, 254 366 L 354 366 C 368 366, 380 378, 380 392 C 380 406, 368 418, 354 418 L 244 418 C 193 418, 152 377, 152 326 Z" 
+          fill="url(#ribbonStemGrad)" />
+
+    <!-- Overlapping Forward Swirl / Ribbon Wing -->
+    <path d="M 174 274 C 190 240, 230 220, 276 220 C 330 220, 374 254, 388 304 C 392 318, 382 332, 368 332 C 356 332, 346 322, 342 312 C 332 284, 304 264, 274 264 C 242 264, 214 280, 202 306 Z" 
+          fill="url(#ribbonLoopGrad)" />
+
+    <!-- Dynamic Flow Accents -->
+    <circle cx="276" cy="220" r="9" fill="#99f6e4" opacity="0.9" />
+    <circle cx="372" cy="392" r="10" fill="#a7f3d0" />
   </g>
 
-  <!-- Left Hemisphere Nodes -->
-  <g fill="#00f0ff" filter="url(#neonGlow)">
-    <circle cx="230" cy="110" r="5" />
-    <circle cx="175" cy="150" r="6" />
-    <circle cx="125" cy="190" r="5" />
-    <circle cx="100" cy="200" r="4.5" />
-    <circle cx="200" cy="215" r="7" />
-    <circle cx="140" cy="255" r="6" />
-    <circle cx="225" cy="270" r="5" />
-    <circle cx="115" cy="290" r="4.5" />
-    <circle cx="155" cy="330" r="6.5" />
-    <circle cx="150" cy="395" r="5" />
-    <circle cx="205" cy="365" r="5.5" />
-    <circle cx="230" cy="400" r="4" />
+  <!-- Radiant AI Spark Star in Upper Right -->
+  <g filter="url(#starGlow)" transform="translate(352, 128)">
+    <!-- 4-Pointed Star -->
+    <path d="M 0 -48 C 3 -16, 16 -3, 48 0 C 16 3, 3 16, 0 48 C -3 16, -16 3, -48 0 C -16 -3, -3 -16, 0 -48 Z" 
+          fill="url(#sparkGrad)" />
+    <!-- Center Bright Dot -->
+    <circle cx="0" cy="0" r="7" fill="#ffffff" />
   </g>
 
-  <!-- Right Brain Hemisphere Synapse Web -->
-  <g stroke="url(#neonViolet)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
-    <!-- Outer brain contours -->
-    <path d="M 282 110 C 342 105, 402 140, 412 200 C 422 240, 407 270, 397 290 C 407 320, 397 365, 362 395 C 332 415, 292 410, 282 400" fill="none" />
-    <!-- Inner network connections -->
-    <line x1="282" y1="110" x2="337" y2="150" />
-    <line x1="337" y1="150" x2="387" y2="190" />
-    <line x1="337" y1="150" x2="312" y2="215" />
-    <line x1="387" y1="190" x2="412" y2="200" />
-    <line x1="387" y1="190" x2="372" y2="255" />
-    <line x1="312" y1="215" x2="372" y2="255" />
-    <line x1="312" y1="215" x2="287" y2="270" />
-    <line x1="372" y1="255" x2="397" y2="290" />
-    <line x1="372" y1="255" x2="357" y2="330" />
-    <line x1="397" y1="290" x2="357" y2="330" />
-    <line x1="357" y1="330" x2="362" y2="395" />
-    <line x1="357" y1="330" x2="307" y2="365" />
-    <line x1="307" y1="365" x2="282" y2="400" />
+  <!-- Subtle Micro-Star Accents -->
+  <g filter="url(#starGlow)" transform="translate(132, 396) scale(0.38)">
+    <path d="M 0 -36 C 2 -12, 12 -2, 36 0 C 12 2, 2 12, 0 36 C -2 12, -12 2, -36 0 C -12 -2, -2 -12, 0 -36 Z" 
+          fill="#5eead4" />
   </g>
-
-  <!-- Right Hemisphere Nodes -->
-  <g fill="#d946ef" filter="url(#neonGlow)">
-    <circle cx="282" cy="110" r="5" />
-    <circle cx="337" cy="150" r="6" />
-    <circle cx="387" cy="190" r="5" />
-    <circle cx="412" cy="200" r="4.5" />
-    <circle cx="312" cy="215" r="7" />
-    <circle cx="372" cy="255" r="6" />
-    <circle cx="287" cy="270" r="5" />
-    <circle cx="397" cy="290" r="4.5" />
-    <circle cx="357" cy="330" r="6.5" />
-    <circle cx="362" cy="395" r="5" />
-    <circle cx="307" cy="365" r="5.5" />
-    <circle cx="282" cy="400" r="4" />
+  <g filter="url(#starGlow)" transform="translate(398, 240) scale(0.28)">
+    <path d="M 0 -36 C 2 -12, 12 -2, 36 0 C 12 2, 2 12, 0 36 C -2 12, -12 2, -36 0 C -12 -2, -2 -12, 0 -36 Z" 
+          fill="#34d399" />
   </g>
-
-  <!-- Central Dynamic Lightning Bolt -->
-  <!-- Outer Glow Stroke -->
-  <polygon 
-    points="310,70 195,250 265,250 200,442 325,235 255,235" 
-    fill="url(#boltGrad)" 
-    stroke="#38bdf8" 
-    stroke-width="12" 
-    stroke-linejoin="round"
-    filter="url(#boltGlow)"
-  />
-
-  <!-- Core Sharp Bolt -->
-  <polygon 
-    points="310,70 195,250 265,250 200,442 325,235 255,235" 
-    fill="url(#boltGrad)" 
-    stroke="#ffffff" 
-    stroke-width="3" 
-    stroke-linejoin="round"
-  />
-
-  <!-- Energy Highlights & Sparkles -->
-  <circle cx="260" cy="242" r="8" fill="#ffffff" filter="url(#boltGlow)" />
-  <circle cx="230" cy="170" r="3.5" fill="#ffffff" />
-  <circle cx="290" cy="310" r="3.5" fill="#ffffff" />
 </svg>

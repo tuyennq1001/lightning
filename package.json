@@ -1,12 +1,12 @@
 {
-  "name": "lightning",
+  "name": "livia",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "package": "tsc -b && vite build && rm -f lightning-v1.0.0.zip && cd dist && zip -r ../lightning-v1.0.0.zip . -x '*.DS_Store' && cd ..",
+    "package": "tsc -b && vite build && rm -f livia-v1.1.0.zip livia-v1.0.0.zip lightning-v1.0.0.zip && cd dist && zip -r ../livia-v1.1.0.zip . -x '*.DS_Store' && cd ..",
     "lint": "oxlint",
     "test": "node --test tests/**/*.test.ts",
     "preview": "vite preview"

@@ -37,8 +37,8 @@ export const defaultPromptsByLang: Record<LanguageCode, Record<string, string>> 
 
 export const translations = {
   vi: {
-    appName: 'Lightning',
-    appDesc: 'Trợ lý AI cá nhân toàn năng',
+    appName: 'Livia',
+    appDesc: 'Trợ lý AI riêng tư & toàn năng',
     // Sidebar
     navGeneral: 'Cài đặt chung',
     navTranslation: 'Ngôn ngữ & Dịch thuật',
@@ -190,10 +190,10 @@ export const translations = {
     fontSize18: '18px - Rất lớn',
     fontSize20: '20px - Khổng lồ',
     fontPreviewTitle: 'Xem trước kết quả hiển thị',
-    fontPreviewSample: 'Lightning là trợ lý AI thông minh, hỗ trợ tóm tắt, giải thích và dịch thuật nội dung web tức thì với trải nghiệm tối ưu.',
+    fontPreviewSample: 'Livia là trợ lý AI riêng tư và thông minh, hỗ trợ tóm tắt, giải thích và dịch thuật nội dung web tức thì với trải nghiệm tối ưu.',
     // Help Section
     helpTitle: 'Hướng dẫn & Phím tắt tiện ích',
-    helpDesc: 'Mẹo và hướng dẫn thao tác nhanh để tận dụng tối đa Lightning.',
+    helpDesc: 'Mẹo và hướng dẫn thao tác nhanh để tận dụng tối đa Livia.',
     guideTitle: 'Hướng dẫn & Phím tắt tiện ích',
     guideSelectionTitle: 'Bôi đen văn bản',
     guideSelectionDesc: 'Bôi đen chữ bất kỳ trên trang web hoặc trong ô soạn thảo để hiển thị thanh công cụ AI ngay tại vị trí thả chuột.',
@@ -203,7 +203,7 @@ export const translations = {
     guidePrivacyDesc: 'Mô hình Bring Your Own Key không dùng máy chủ trung gian. Toàn bộ yêu cầu đi trực tiếp từ máy của bạn tới API của Google/OpenAI/Anthropic.',
     // About Section
     aboutTitle: 'Giới thiệu',
-    aboutDesc: 'Thông tin về tác giả và dự án Lightning.',
+    aboutDesc: 'Thông tin về tác giả và dự án Livia.',
     aboutNameLabel: 'Tác giả',
     aboutWebsiteLabel: 'Website',
     aboutContactLabel: 'Liên hệ',
@@ -254,15 +254,15 @@ export const translations = {
     ],
     quickAskPrompt: (selectedText: string, question: string, webSearch?: boolean, outputLang?: string) =>
       webSearch
-        ? `Bạn là trợ lý AI thông minh Lightning có khả năng tìm kiếm Internet thời gian thực. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy tìm kiếm thông tin mới nhất trên Internet và trả lời câu hỏi/yêu cầu sau của người dùng bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời chính xác, cập nhật, trực diện, không thừa thãi và dẫn nguồn nếu có.`
-        : `Bạn là trợ lý AI thông minh Lightning. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy trả lời câu hỏi/yêu cầu sau của người dùng liên quan đến đoạn văn bản trên bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời ngắn gọn, trực diện, chính xác và không thừa thãi.`,
+        ? `Bạn là trợ lý AI thông minh Livia có khả năng tìm kiếm Internet thời gian thực. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy tìm kiếm thông tin mới nhất trên Internet và trả lời câu hỏi/yêu cầu sau của người dùng bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời chính xác, cập nhật, trực diện, không thừa thãi và dẫn nguồn nếu có.`
+        : `Bạn là trợ lý AI thông minh Livia. Dưới đây là đoạn văn bản mà người dùng đang đọc/chọn:\n"${selectedText}"\n\nHãy trả lời câu hỏi/yêu cầu sau của người dùng liên quan đến đoạn văn bản trên bằng ${outputLang || 'tiếng Việt'}:\n${question}\n\nTrả lời ngắn gọn, trực diện, chính xác và không thừa thãi.`,
     askBtn: 'Hỏi',
     translateTo: 'Dịch sang:',
     copyBtn: 'Sao chép',
     copiedBtn: 'Đã sao chép!',
     retryBtn: 'Thử lại',
     replaceBtn: 'Thay thế văn bản',
-    thinking: 'Lightning đang xử lý...',
+    thinking: 'Livia đang xử lý...',
     closeBtn: 'Đóng',
     dragToMove: 'Kéo để di chuyển vị trí',
     fullPageContent: 'Nội dung toàn trang web',
@@ -292,8 +292,8 @@ export const translations = {
     errUnsupportedProvider: 'Lỗi: Nhà cung cấp AI chưa được hỗ trợ.',
   },
   en: {
-    appName: 'Lightning',
-    appDesc: 'All-in-One AI Assistant',
+    appName: 'Livia',
+    appDesc: 'Private All-in-One AI Copilot',
     // Sidebar
     navGeneral: 'General Settings',
     navTranslation: 'Languages & Translation',
@@ -445,10 +445,10 @@ export const translations = {
     fontSize18: '18px - Extra Large',
     fontSize20: '20px - Huge',
     fontPreviewTitle: 'Result Preview',
-    fontPreviewSample: 'Lightning is an intelligent all-in-one AI assistant, empowering instant web reading, translation, and rewriting.',
+    fontPreviewSample: 'Livia is your private AI copilot, empowering instant web reading, translation, and rewriting.',
     // Help Section
     helpTitle: 'Guide & Useful Shortcuts',
-    helpDesc: 'Quick tips and usage guide to get the most out of Lightning.',
+    helpDesc: 'Quick tips and usage guide to get the most out of Livia.',
     guideTitle: 'Guide & Useful Shortcuts',
     guideSelectionTitle: 'Text Selection',
     guideSelectionDesc: 'Select any text on a webpage or within an input box to display the AI toolbar at your cursor end.',
@@ -458,7 +458,7 @@ export const translations = {
     guidePrivacyDesc: 'The Bring Your Own Key model bypasses third-party servers. All requests go directly to Google/OpenAI/Anthropic.',
     // About Section
     aboutTitle: 'About',
-    aboutDesc: 'Information about the author and Lightning project.',
+    aboutDesc: 'Information about the author and Livia project.',
     aboutNameLabel: 'Author',
     aboutWebsiteLabel: 'Website',
     aboutContactLabel: 'Contact',
@@ -509,15 +509,15 @@ export const translations = {
     ],
     quickAskPrompt: (selectedText: string, question: string, webSearch?: boolean, outputLang?: string) =>
       webSearch
-        ? `You are Lightning, an intelligent AI assistant with real-time web search capabilities. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease search for the latest information on the Internet and answer the user's question/request in ${outputLang || 'English'}:\n${question}\n\nBe accurate, up-to-date, direct, concise, and cite sources if available.`
-        : `You are Lightning, an intelligent AI assistant. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease answer the user's question/request regarding the selected text in ${outputLang || 'English'}:\n${question}\n\nBe concise, direct, accurate, and avoid filler.`,
+        ? `You are Livia, an intelligent AI copilot with real-time web search capabilities. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease search for the latest information on the Internet and answer the user's question/request in ${outputLang || 'English'}:\n${question}\n\nBe accurate, up-to-date, direct, concise, and cite sources if available.`
+        : `You are Livia, an intelligent AI copilot. Here is the text the user selected/is reading:\n"${selectedText}"\n\nPlease answer the user's question/request regarding the selected text in ${outputLang || 'English'}:\n${question}\n\nBe concise, direct, accurate, and avoid filler.`,
     askBtn: 'Ask',
     translateTo: 'Translate to:',
     copyBtn: 'Copy',
     copiedBtn: 'Copied!',
     retryBtn: 'Retry',
     replaceBtn: 'Replace text',
-    thinking: 'Lightning is thinking...',
+    thinking: 'Livia is thinking...',
     closeBtn: 'Close',
     dragToMove: 'Drag to move',
     fullPageContent: 'Full page content',
@@ -547,8 +547,8 @@ export const translations = {
     errUnsupportedProvider: 'Error: Unsupported AI provider.',
   },
   ja: {
-    appName: 'Lightning',
-    appDesc: 'オールインワンAIアシスタント',
+    appName: 'Livia',
+    appDesc: 'プライベート・オールインワンAIアシスタント',
     // Sidebar
     navGeneral: '一般設定',
     navTranslation: '言語・翻訳設定',
@@ -700,10 +700,10 @@ export const translations = {
     fontSize18: '18px - 特大',
     fontSize20: '20px - 最大',
     fontPreviewTitle: 'プレビュー',
-    fontPreviewSample: 'Lightningは、ウェブページの要約、説明、翻訳を瞬時に支援するオールインワンAIアシスタントです。',
+    fontPreviewSample: 'Liviaは、プライベートで安全なオールインワンAIアシスタントです。ウェブページの要約、説明、翻訳を瞬時に支援します。',
     // Help Section
     helpTitle: '使い方と便利なショートカット',
-    helpDesc: 'Lightningを最大限に活用するためのヒントとガイド。',
+    helpDesc: 'Liviaを最大限に活用するためのヒントとガイド。',
     guideTitle: '使い方と便利なショートカット',
     guideSelectionTitle: 'テキスト選択',
     guideSelectionDesc: 'Webページや入力欄でテキストを選択すると、カーソルの位置にAIツールバーが表示されます。',
@@ -713,7 +713,7 @@ export const translations = {
     guidePrivacyDesc: 'Bring Your Own Key方式により仲介サーバーを使用しません。リクエストはお使いの端末から各AIへ直接送信されます。',
     // About Section
     aboutTitle: '概要',
-    aboutDesc: '開発者およびLightningプロジェクトに関する情報。',
+    aboutDesc: '開発者およびLiviaプロジェクトに関する情報。',
     aboutNameLabel: '開発者',
     aboutWebsiteLabel: 'ウェブサイト',
     aboutContactLabel: '連絡先',
@@ -764,15 +764,15 @@ export const translations = {
     ],
     quickAskPrompt: (selectedText: string, question: string, webSearch?: boolean, outputLang?: string) =>
       webSearch
-        ? `あなたはリアルタイムウェブ検索機能を備えた高機能AIアシスタントLightningです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nインターネットから最新情報を検索し、以下の質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n正確かつ最新の情報を簡潔に回答し、該当する場合は情報源を記載してください。`
-        : `あなたは高機能AIアシスタントLightningです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nこのテキストに関するユーザーの質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n簡潔で的確、かつ正確に回答し、余計な前置きは省いてください。`,
+        ? `あなたはリアルタイムウェブ検索機能を備えた高機能AIアシスタントLiviaです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nインターネットから最新情報を検索し、以下の質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n正確かつ最新の情報を簡潔に回答し、該当する場合は情報源を記載してください。`
+        : `あなたは高機能AIアシスタントLiviaです。以下はユーザーが選択中または閲覧中のテキストです:\n"${selectedText}"\n\nこのテキストに関するユーザーの質問または要望に${outputLang || '日本語'}で回答してください:\n${question}\n\n簡潔で的確、かつ正確に回答し、余計な前置きは省いてください。`,
     askBtn: '質問',
     translateTo: '翻訳先:',
     copyBtn: 'コピー',
     copiedBtn: 'コピー完了!',
     retryBtn: '再試行',
     replaceBtn: 'テキストを置換',
-    thinking: 'Lightningが処理中...',
+    thinking: 'Liviaが処理中...',
     closeBtn: '閉じる',
     dragToMove: 'ドラッグして移動',
     fullPageContent: 'Webページ全体のコンテンツ',

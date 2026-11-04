@@ -124,7 +124,7 @@ export default function Options() {
   }, [actions, pageActions, actionShortcut, editingActionId]);
 
   useEffect(() => {
-    document.title = 'Lightning Options';
+    document.title = 'Livia Settings • Private AI Copilot';
   }, []);
 
   // Close modal on Escape key
@@ -703,7 +703,7 @@ export default function Options() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50 text-gray-500 font-medium">
-        Đang tải dữ liệu Lightning...
+        Đang tải cấu hình Livia...
       </div>
     );
   }
@@ -715,7 +715,7 @@ export default function Options() {
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 select-none">
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-2.5">
-          <img src="/icons/icon32.png" alt="Lightning Logo" className="w-8 h-8 rounded-lg shadow-sm" />
+          <img src="/icons/icon32.png" alt="Livia Logo" className="w-8 h-8 rounded-lg shadow-sm" />
           <div>
             <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none">{t.appName}</h1>
             <span className="text-[11px] text-slate-400 font-medium">{t.appDesc}</span>
@@ -729,7 +729,7 @@ export default function Options() {
             onClick={() => scrollToSection('general')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'general'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -742,7 +742,7 @@ export default function Options() {
             onClick={() => scrollToSection('translation')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'translation'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -755,7 +755,7 @@ export default function Options() {
             onClick={() => scrollToSection('page-actions')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'page-actions'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -768,7 +768,7 @@ export default function Options() {
             onClick={() => scrollToSection('toolbar')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'toolbar'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -781,7 +781,7 @@ export default function Options() {
             onClick={() => scrollToSection('provider')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'provider'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -794,7 +794,7 @@ export default function Options() {
             onClick={() => scrollToSection('help')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'help'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -807,7 +807,7 @@ export default function Options() {
             onClick={() => scrollToSection('about')}
             className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
               activeSection === 'about'
-                ? 'bg-blue-50 text-blue-600 font-semibold'
+                ? 'bg-emerald-50 text-emerald-700 font-bold border-l-3 border-emerald-500'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
@@ -818,7 +818,7 @@ export default function Options() {
 
         {/* Footer info */}
         <div className="p-4 border-t border-slate-100 text-[11px] text-slate-400">
-          Lightning v1.0.0 • BYOK Mode
+          Livia v1.1.0 • 100% Private BYOK
         </div>
       </aside>
 
@@ -961,7 +961,7 @@ export default function Options() {
                     fontSize: getFontSizeCss(fontSize),
                   }}
                 >
-                  <p className="font-semibold text-slate-900 mb-1">⚡ Lightning AI Result</p>
+                  <p className="font-semibold text-emerald-800 mb-1">✨ Livia AI Copilot Result</p>
                   <p>{t.fontPreviewSample}</p>
                 </div>
               </div>
@@ -1048,7 +1048,7 @@ export default function Options() {
                 <button
                   type="button"
                   onClick={() => handleSaveAll(actions, showToolbar, appLanguage, webSearchEnabled, disabledWebsites, outputLanguage)}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer"
                 >
                   {t.saveTransBtn}
                 </button>
@@ -1735,7 +1735,7 @@ export default function Options() {
               <div className="pt-2">
                 <button
                   onClick={() => handleSaveAll()}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-sm transition cursor-pointer"
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer"
                 >
                   {t.saveProviderBtn}
                 </button>
@@ -1801,7 +1801,7 @@ export default function Options() {
 
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
               <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
-                <img src="/icons/icon48.png" alt="Lightning Logo" className="w-12 h-12 rounded-2xl shadow-sm" />
+                <img src="/icons/icon48.png" alt="Livia Logo" className="w-12 h-12 rounded-2xl shadow-sm" />
                 <div>
                   <h3 className="text-base font-bold text-slate-900">{t.appName}</h3>
                   <p className="text-xs text-slate-500">{t.appDesc}</p>
