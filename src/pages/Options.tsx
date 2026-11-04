@@ -5,6 +5,8 @@ import {
   type CustomAction, 
   type FontFamilyOption, 
   type FontSizeOption, 
+  type ModifierKey,
+  type SelectTriggerMode,
   DEFAULT_ACTIONS, 
   DEFAULT_PAGE_ACTIONS,
   normalizeDomain, 
@@ -87,6 +89,12 @@ export default function Options() {
   const [newDomainInput, setNewDomainInput] = useState('');
   const [searchDomainQuery, setSearchDomainQuery] = useState('');
   const [domainError, setDomainError] = useState('');
+
+  // Select-to-Action
+  const [selectToActionEnabled, setSelectToActionEnabled] = useState(true);
+  const [selectTriggerMode, setSelectTriggerMode] = useState<SelectTriggerMode>('modifier');
+  const [selectModifierKey, setSelectModifierKey] = useState<ModifierKey>('alt');
+  const [defaultSelectionActionId, setDefaultSelectionActionId] = useState('translate');
   
   const [saved, setSaved] = useState(false);
 
@@ -161,6 +169,10 @@ export default function Options() {
       setActions(settings.actions && settings.actions.length > 0 ? settings.actions : DEFAULT_ACTIONS);
       setPageActions(settings.pageActions && settings.pageActions.length > 0 ? settings.pageActions : DEFAULT_PAGE_ACTIONS);
       setDisabledWebsites(settings.disabledWebsites || []);
+      setSelectToActionEnabled(settings.selectToActionEnabled !== false);
+      setSelectTriggerMode(settings.selectTriggerMode || 'modifier');
+      setSelectModifierKey(settings.selectModifierKey || 'alt');
+      setDefaultSelectionActionId(settings.defaultSelectionActionId || 'translate');
     }
   }, [settings]);
 
@@ -394,7 +406,40 @@ export default function Options() {
       disabledWebsites: disabledWebsitesToSave,
       fontFamily: fontFamilyToSave,
       fontSize: fontSizeToSave,
+      selectToActionEnabled,
+      selectTriggerMode,
+      selectModifierKey,
+      defaultSelectionActionId,
     });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleToggleSelectToAction = async () => {
+    const updated = !selectToActionEnabled;
+    setSelectToActionEnabled(updated);
+    await updateSettings({ selectToActionEnabled: updated });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSelectTriggerModeChange = async (mode: SelectTriggerMode) => {
+    setSelectTriggerMode(mode);
+    await updateSettings({ selectTriggerMode: mode });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleSelectModifierKeyChange = async (key: ModifierKey) => {
+    setSelectModifierKey(key);
+    await updateSettings({ selectModifierKey: key });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleDefaultSelectionActionChange = async (actionId: string) => {
+    setDefaultSelectionActionId(actionId);
+    await updateSettings({ defaultSelectionActionId: actionId });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -1203,6 +1248,84 @@ export default function Options() {
             <div>
               <h2 className="text-2xl font-bold text-slate-900 tracking-tight">{t.toolbarTitle}</h2>
               <p className="text-sm text-slate-500 mt-1">{t.toolbarDesc}</p>
+            </div>
+
+            {/* Select-to-Action Card */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">⚡</span>
+                    <h3 className="text-sm font-semibold text-slate-900">{t.selectToActionTitle}</h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">{t.enableSelectToActionDesc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleSelectToAction}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    selectToActionEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      selectToActionEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {selectToActionEnabled && (
+                <div className="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      {t.selectTriggerModeLabel}
+                    </label>
+                    <select
+                      value={selectTriggerMode}
+                      onChange={(e) => handleSelectTriggerModeChange(e.target.value as SelectTriggerMode)}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="always">{t.selectTriggerModeAlways}</option>
+                      <option value="modifier">{t.selectTriggerModeModifier}</option>
+                    </select>
+                  </div>
+
+                  {selectTriggerMode === 'modifier' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        {t.selectModifierKeyLabel}
+                      </label>
+                      <select
+                        value={selectModifierKey}
+                        onChange={(e) => handleSelectModifierKeyChange(e.target.value as ModifierKey)}
+                        className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                      >
+                        <option value="alt">{t.modifierKeyAlt}</option>
+                        <option value="ctrl">{t.modifierKeyCtrl}</option>
+                        <option value="shift">{t.modifierKeyShift}</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      {t.defaultSelectionActionLabel}
+                    </label>
+                    <select
+                      value={defaultSelectionActionId}
+                      onChange={(e) => handleDefaultSelectionActionChange(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                    >
+                      {actions.filter(a => a.enabled !== false).map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.icon} {a.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Toggle Card */}
